@@ -297,6 +297,10 @@ impl AppState {
                     self.particle_system.paused = !self.particle_system.paused;
                 }
 
+                if ui.button("Reset").clicked() {
+                    self.particle_system.reset(&self.queue);
+                }
+
                 ui.separator();
                 ui.heading("Mouse Interaction");
                 ui.label(format!(
@@ -483,6 +487,9 @@ impl ApplicationHandler for App {
                             }
                             winit::keyboard::PhysicalKey::Code(KeyCode::KeyP) => {
                                 state.particle_system.paused = !state.particle_system.paused;
+                            }
+                            winit::keyboard::PhysicalKey::Code(KeyCode::KeyR) => {
+                                state.particle_system.reset(&state.queue);
                             }
                             winit::keyboard::PhysicalKey::Code(KeyCode::F11) => {
                                 state.fullscreen = !state.fullscreen;

@@ -199,6 +199,37 @@ impl ParticleSystem {
         }
     }
 
+    pub fn reset(&mut self, queue: &egui_wgpu::wgpu::Queue) {
+        let mut particles = Vec::with_capacity(self.max_particles as usize);
+        for _ in 0..self.max_particles {
+            let r = rand::random::<f32>();
+            let g = rand::random::<f32>();
+            let b = rand::random::<f32>();
+
+            let phi = rand::random::<f32>() * std::f32::consts::PI * 2.0;
+            let theta = (rand::random::<f32>() - 0.5) * std::f32::consts::PI;
+            let radius = rand::random::<f32>() * 50.0;
+
+            let pos = Vec3::new(
+                radius * phi.cos() * theta.cos(),
+                radius * theta.sin(),
+                radius * phi.sin() * theta.cos(),
+            );
+
+            let vel = Vec3::new(
+                (rand::random::<f32>() - 0.5) * 0.1,
+                (rand::random::<f32>() - 0.5) * 0.1,
+                (rand::random::<f32>() - 0.5) * 0.1,
+            );
+
+            particles.push(Particle::new(pos, vel, Vec4::new(r, g, b, 1.0)));
+        }
+
+        queue.write_buffer(&self.particle_buffer, 0, bytemuck::cast_slice(&particles));
+
+        self.gravity = 0.0;
+    }
+
     pub fn update(
         &mut self,
         queue: &egui_wgpu::wgpu::Queue,
