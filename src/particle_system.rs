@@ -37,7 +37,7 @@ pub struct ParticleSystem {
     pub color_mode: u32,
     pub mouse_force: f32,
     pub mouse_radius: f32,
-    pub mouse_position: [f32; 2],
+    pub mouse_position: [f32; 3],
     pub mouse_depth: f32,
     pub is_mouse_dragging: bool,
     pub sim_param_buffer: egui_wgpu::wgpu::Buffer,
@@ -152,9 +152,10 @@ impl ParticleSystem {
             color_mode: 0,
             mouse_force: 5.0,
             mouse_radius: 10.0,
-            mouse_position: [0.0, 0.0],
+            mouse_position_x: 0.0,
+            mouse_position_y: 0.0,
+            mouse_position_z: 0.0,
             is_mouse_dragging: 0,
-            padding: 0,
         };
 
         let sim_param_buffer =
@@ -193,7 +194,7 @@ impl ParticleSystem {
             color_mode: 0,
             mouse_force: 5.0,
             mouse_radius: 10.0,
-            mouse_position: [0.0, 0.0],
+            mouse_position: [0.0, 0.0, 0.0],
             mouse_depth: 0.0,
             is_mouse_dragging: false,
             sim_param_buffer,
@@ -217,9 +218,10 @@ impl ParticleSystem {
             color_mode: self.color_mode,
             mouse_force: self.mouse_force,
             mouse_radius: self.mouse_radius,
-            mouse_position: self.mouse_position,
+            mouse_position_x: self.mouse_position[0],
+            mouse_position_y: self.mouse_position[1],
+            mouse_position_z: self.mouse_position[2],
             is_mouse_dragging: if self.is_mouse_dragging { 1 } else { 0 },
-            padding: 0,
         };
 
         queue.write_buffer(
@@ -251,7 +253,9 @@ struct SimParams {
     color_mode: u32,
     mouse_force: f32,
     mouse_radius: f32,
-    mouse_position: [f32; 2],
+    // TODO: See about making this a vec3<f32>
+    mouse_position_x: f32,
+    mouse_position_y: f32,
+    mouse_position_z: f32,
     is_mouse_dragging: u32,
-    padding: u32,
 }

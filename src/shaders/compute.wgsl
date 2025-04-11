@@ -13,7 +13,10 @@ struct SimParams {
     color_mode: u32,
     mouse_force: f32,
     mouse_radius: f32,
-    mouse_position: vec2<f32>,
+    // mouse_position: vec3<f32>,
+    mouse_position_x: f32,
+    mouse_position_y: f32,
+    mouse_position_z: f32,
     is_mouse_dragging: u32,
 };
 
@@ -37,9 +40,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     if (params.is_mouse_dragging > 0u) {
         let mouse_pos_3d = vec3<f32>(
-            params.mouse_position.x,
-            params.mouse_position.y,
-            particle.position.z  // Keep z-coordinate for now
+            params.mouse_position_x,
+            params.mouse_position_y,
+            params.mouse_position_z
         );
 
         let dir = mouse_pos_3d - particle.position;

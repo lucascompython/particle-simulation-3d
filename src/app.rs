@@ -187,7 +187,7 @@ impl AppState {
         if self.particle_system.is_mouse_dragging {
             let (x, y) = self.input_manager.mouse_position();
 
-            // normalized device coordinates
+            // Convert screen coordinates to normalized device coordinates (-1 to 1)
             let ndc_x = (2.0 * x / self.surface_config.width as f32) - 1.0;
             let ndc_y = 1.0 - (2.0 * y / self.surface_config.height as f32);
 
@@ -201,18 +201,20 @@ impl AppState {
             let camera_right = camera_forward.cross(Vec3::Y).normalize();
             let camera_up = camera_right.cross(camera_forward).normalize();
 
-            // Base distance from camera
-            let base_distance = 20.0 + self.particle_system.mouse_depth;
+            // Use mouse_depth to determine distance from camera
+            let distance = 20.0 + self.particle_system.mouse_depth;
 
-            // Calculate 3D position in camera space
-            // Scale the NDC coordinates by a factor for wider movement
-            let scale_factor = base_distance * self.camera.fov.tan() * self.camera.aspect;
-            let world_pos = self.camera.position
-                + camera_forward * base_distance
-                + camera_right * (ndc_x * scale_factor)
-                + camera_up * (ndc_y * scale_factor * (1.0 / self.camera.aspect));
+            let plane_center = self.camera.position + camera_forward * distance;
 
-            self.particle_system.mouse_position = [world_pos.x, world_pos.y];
+            // Scale the NDC coordinates based on the field of view and distance
+            let height = 2.0 * distance * (self.camera.fov / 2.0).tan();
+            let width = height * self.camera.aspect;
+
+            let world_pos = plane_center
+                + camera_right * (ndc_x * width / 2.0)
+                + camera_up * (ndc_y * height / 2.0);
+
+            self.particle_system.mouse_position = [world_pos.x, world_pos.y, world_pos.z];
         }
     }
 
@@ -291,8 +293,10 @@ impl AppState {
                 ui.separator();
                 ui.heading("Mouse Interaction");
                 ui.label(format!(
-                    "Position: ({:.2}, {:.2})",
-                    self.particle_system.mouse_position[0], self.particle_system.mouse_position[1]
+                    "Position: ({:.2}, {:.2}, {:.2})",
+                    self.particle_system.mouse_position[0],
+                    self.particle_system.mouse_position[1],
+                    self.particle_system.mouse_position[2]
                 ));
 
                 ui.label(format!(
