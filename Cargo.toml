@@ -1,0 +1,21 @@
+[package]
+name = "particle-simulation"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+egui = "0.31.1"
+egui-wgpu = { version = "0.31.1", features = ["winit"] }
+egui-winit = "0.31.1"
+winit = "0.30.9"
+pollster = "0.4.0"
+glam = "0.30.1"
+bytemuck = "1.22.0"
+rand = "0.9.0"
+
+
+[profile.release]
+codegen-units = 1 # Allows LLVM to perform better optimization.
+lto = true        # Enables link-time-optimizations.
+panic = "abort"   # Higher performance by disabling panic handlers.
+strip = true      # Ensures debug symbols are removed.
