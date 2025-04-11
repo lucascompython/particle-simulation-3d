@@ -187,7 +187,7 @@ impl AppState {
         if self.particle_system.is_mouse_dragging {
             let (x, y) = self.input_manager.mouse_position();
 
-            // Convert screen coordinates to normalized device coordinates (-1 to 1)
+            // Convert screen coordinates to normalized device coordinates
             let ndc_x = (2.0 * x / self.surface_config.width as f32) - 1.0;
             let ndc_y = 1.0 - (2.0 * y / self.surface_config.height as f32);
 
@@ -201,9 +201,16 @@ impl AppState {
             let camera_right = camera_forward.cross(Vec3::Y).normalize();
             let camera_up = camera_right.cross(camera_forward).normalize();
 
-            // Use mouse_depth to determine distance from camera
-            let distance = 20.0 + self.particle_system.mouse_depth;
+            let current_pos = Vec3::new(
+                self.particle_system.mouse_position[0],
+                self.particle_system.mouse_position[1],
+                self.particle_system.mouse_position[2],
+            );
+            let camera_pos = self.camera.position;
+            let to_cursor = current_pos - camera_pos;
+            let distance = to_cursor.dot(camera_forward);
 
+            // Calculate the plane at the specified distance from camera
             let plane_center = self.camera.position + camera_forward * distance;
 
             // Scale the NDC coordinates based on the field of view and distance
@@ -303,7 +310,10 @@ impl AppState {
                     "Dragging: {}",
                     self.particle_system.is_mouse_dragging
                 ));
-                ui.label(format!("Depth: {:.2}", self.particle_system.mouse_depth));
+                ui.label(format!(
+                    "Depth: {:.2}",
+                    self.particle_system.mouse_position[2]
+                ));
 
                 ui.add(
                     egui::Slider::new(&mut self.particle_system.mouse_radius, 1.0..=50.0)
@@ -508,9 +518,24 @@ impl ApplicationHandler for App {
                         state.camera.fov = fov_degrees * std::f32::consts::PI / 180.0;
                         state.camera.update_view_proj();
                     } else {
-                        // Otherwise adjust mouse depth
-                        state.particle_system.mouse_depth =
-                            state.particle_system.mouse_depth - delta_value * 5.0;
+                        let camera_forward = Vec3::new(
+                            state.camera.yaw.cos() * state.camera.pitch.cos(),
+                            state.camera.pitch.sin(),
+                            state.camera.yaw.sin() * state.camera.pitch.cos(),
+                        )
+                        .normalize();
+
+                        let cursor_pos = Vec3::new(
+                            state.particle_system.mouse_position[0],
+                            state.particle_system.mouse_position[1],
+                            state.particle_system.mouse_position[2],
+                        );
+
+                        // Move cursor position along camera forward vector
+                        let move_distance = delta_value * 2.0;
+                        let new_pos = cursor_pos + camera_forward * move_distance;
+
+                        state.particle_system.mouse_position = [new_pos.x, new_pos.y, new_pos.z];
                     }
                 }
                 WindowEvent::MouseInput {

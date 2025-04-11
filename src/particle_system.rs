@@ -38,7 +38,6 @@ pub struct ParticleSystem {
     pub mouse_force: f32,
     pub mouse_radius: f32,
     pub mouse_position: [f32; 3],
-    pub mouse_depth: f32,
     pub is_mouse_dragging: bool,
     pub sim_param_buffer: egui_wgpu::wgpu::Buffer,
 }
@@ -195,7 +194,6 @@ impl ParticleSystem {
             mouse_force: 5.0,
             mouse_radius: 10.0,
             mouse_position: [0.0, 0.0, 0.0],
-            mouse_depth: 0.0,
             is_mouse_dragging: false,
             sim_param_buffer,
         }
