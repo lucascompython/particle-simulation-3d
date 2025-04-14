@@ -4,14 +4,14 @@ version = "1.0.0"
 edition = "2024"
 
 [dependencies]
-egui = "0.31.1"
-egui-wgpu = { version = "0.31.1", features = ["winit"] }
-egui-winit = "0.31.1"
-winit = "0.30.9"
-pollster = "0.4.0"
-glam = "0.30.1"
-bytemuck = "1.22.0"
-rand = "0.9.0"
+egui = "0.31"
+egui-wgpu = { version = "0.31", features = ["winit"] }
+egui-winit = "0.31"
+winit = "0.30"
+pollster = "0.4"
+glam = "0.30"
+bytemuck = "1.22"
+rand = "0.9"
 
 
 [profile.release]
