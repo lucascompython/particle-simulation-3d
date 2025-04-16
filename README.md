@@ -9,3 +9,5 @@ This project also used this [template](https://github.com/kaphula/winit-egui-wgp
 - Add more settings and values to tinker with in the simulation
 - Add 2D version, rewrite [this](https://github.com/lucascompython/particles) in wgpu
 - Add more color profiles
+- Improve wasm bundle size
+- Update to wgpu 25
