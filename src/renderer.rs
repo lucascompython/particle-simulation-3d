@@ -1,5 +1,4 @@
-use crate::camera::Camera;
-use crate::particle_system::Particle;
+use crate::{camera::Camera, simulation::Particle};
 
 pub struct ParticleRenderer {
     pub render_pipeline: wgpu::RenderPipeline,

@@ -1,7 +1,7 @@
 use egui::PaintCallbackInfo;
 use egui_wgpu::{CallbackResources, CallbackTrait};
 
-use crate::particle_system::Particle;
+use crate::simulation::Particle;
 
 pub struct UnsafeParticleCallback {
     pub render_pipeline_ptr: *const wgpu::RenderPipeline,
