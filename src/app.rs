@@ -305,12 +305,13 @@ impl ParticleApp {
                                     "Transform Feedback (WebGL Compatible)"
                                 }
                             };
-
                             if ui
-                                .selectable_value(&mut self.current_method, *method, text)
+                                .selectable_label(self.current_method == *method, text)
                                 .clicked()
                             {
-                                clicked_method = Some(*method);
+                                if self.current_method != *method {
+                                    clicked_method = Some(*method);
+                                }
                             }
                         }
                     });
