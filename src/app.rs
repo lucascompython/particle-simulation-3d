@@ -528,7 +528,6 @@ impl eframe::App for ParticleApp {
                 render_pipeline_ptr: &self.renderer.render_pipeline as *const _,
                 camera_bind_group_ptr: &self.camera.bind_group as *const _,
                 particle_buffer_ptr: self.simulation.get_particle_buffer() as *const _,
-                num_particles: self.simulation.get_particle_count(),
             };
 
             let callback = egui_wgpu::Callback::new_paint_callback(rect, callback_obj);

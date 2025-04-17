@@ -1,11 +1,12 @@
 use egui::PaintCallbackInfo;
 use egui_wgpu::{CallbackResources, CallbackTrait};
 
+use crate::particle_system::Particle;
+
 pub struct UnsafeParticleCallback {
     pub render_pipeline_ptr: *const wgpu::RenderPipeline,
     pub camera_bind_group_ptr: *const wgpu::BindGroup,
     pub particle_buffer_ptr: *const wgpu::Buffer,
-    pub num_particles: u32,
 }
 
 // Safe because we ensure the pointers remain valid during the callback's lifetime
@@ -37,10 +38,18 @@ impl CallbackTrait for UnsafeParticleCallback {
             let camera_bind_group = &*self.camera_bind_group_ptr;
             let particle_buffer = &*self.particle_buffer_ptr;
 
+            let particle_struct_size = std::mem::size_of::<Particle>() as u64;
+            // Ensure particle_struct_size is not zero to avoid division by zero
+            let actual_drawable_particles = if particle_struct_size > 0 {
+                particle_buffer.size() / particle_struct_size
+            } else {
+                0 // Or handle error appropriately
+            };
+
             render_pass.set_pipeline(render_pipeline);
             render_pass.set_bind_group(0, camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, particle_buffer.slice(..));
-            render_pass.draw(0..1, 0..self.num_particles);
+            render_pass.draw(0..1, 0..actual_drawable_particles as u32);
         }
     }
 }
