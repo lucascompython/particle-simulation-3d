@@ -279,17 +279,19 @@ impl ParticleApp {
                 ui.separator();
                 ui.heading("Simulation");
 
-                let paused = self.simulation.is_paused();
-                if ui.button(if paused { "Resume" } else { "Pause" }).clicked() {
-                    self.simulation.set_paused(!paused);
-                }
-
-                if ui.button("Reset").clicked() {
-                    if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                        self.simulation
-                            .reset(&wgpu_render_state.device, &wgpu_render_state.queue);
+                ui.horizontal(|ui| {
+                    if ui.button("Reset").clicked() {
+                        if let Some(wgpu_render_state) = frame.wgpu_render_state() {
+                            self.simulation
+                                .reset(&wgpu_render_state.device, &wgpu_render_state.queue);
+                        }
                     }
-                }
+
+                    let paused = self.simulation.is_paused();
+                    if ui.button(if paused { "Resume" } else { "Pause" }).clicked() {
+                        self.simulation.set_paused(!paused);
+                    }
+                });
 
                 let mut clicked_method = None;
                 egui::ComboBox::from_label("Method")
@@ -440,7 +442,6 @@ impl ParticleApp {
                 ui.label("Mouse Left - Drag particles");
                 ui.label("Mouse Scroll - Cursor Distance");
                 ui.label("U - Toggle UI");
-                ui.label("ESC - Exit");
             });
     }
 }
