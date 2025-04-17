@@ -32,7 +32,7 @@ pub struct ParticleApp {
 
     current_method: SimulationMethod,
     available_methods: Vec<SimulationMethod>,
-    particle_count_input: String,
+    ui_particle_count: u32,
 
     // Input tracking
     mouse_pos: (f32, f32),
@@ -78,15 +78,18 @@ impl ParticleApp {
         };
 
         // Create simulation based on method
-        let initial_particles = 10_000;
+        let initial_particles;
         let simulation: Box<dyn ParticleSimulation> = match default_method {
             SimulationMethod::Cpu => {
+                initial_particles = 10_000;
                 Box::new(CpuParticleSimulation::new(device, initial_particles))
             }
             SimulationMethod::ComputeShader => {
+                initial_particles = 1_000_000;
                 Box::new(ComputeParticleSimulation::new(device, initial_particles))
             }
             SimulationMethod::TransformFeedback => {
+                initial_particles = 100_000;
                 Box::new(TransformFeedbackSimulation::new(device, initial_particles))
             }
         };
@@ -119,7 +122,7 @@ impl ParticleApp {
 
             current_method: default_method,
             available_methods,
-            particle_count_input: initial_particles.to_string(),
+            ui_particle_count: initial_particles,
 
             mouse_pos: (0.0, 0.0),
             mouse_prev_pos: (0.0, 0.0),
@@ -152,6 +155,7 @@ impl ParticleApp {
 
         self.simulation.set_paused(was_paused);
         self.current_method = new_method;
+        self.ui_particle_count = current_count;
     }
 
     fn update_simulation(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
@@ -271,10 +275,6 @@ impl ParticleApp {
             .show(ctx, |ui| {
                 ui.heading("Statistics");
                 ui.label(format!("FPS: {:.1}", self.fps));
-                ui.label(format!(
-                    "Particles: {}",
-                    self.simulation.get_particle_count()
-                ));
 
                 ui.separator();
                 ui.heading("Simulation");
@@ -364,60 +364,58 @@ impl ParticleApp {
                 ui.separator();
                 ui.heading("Particle Count");
 
+                let mut particle_count_changed = false; // Flag to trigger resize later
+
                 ui.horizontal(|ui| {
                     ui.label("Count:");
-                    if ui
-                        .text_edit_singleline(&mut self.particle_count_input)
-                        .lost_focus()
-                    {
-                        if let Ok(count) = self.particle_count_input.parse::<u32>() {
-                            if count > 0 {
-                                if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                                    self.simulation.resize_buffer(
-                                        &wgpu_render_state.device,
-                                        &wgpu_render_state.queue,
-                                        count,
-                                    );
-                                }
-                            }
-                        }
+                    // Use DragValue bound to the u32 field
+                    let drag_response = ui.add(
+                        egui::DragValue::new(&mut self.ui_particle_count)
+                            .range(1..=5_000_000u32) // Set a reasonable range (min 1)
+                            .speed(100.0), // Adjust speed as needed (particles per point dragged)
+                                           // .suffix(" particles") // Optional suffix
+                    );
+
+                    // Check if the DragValue was changed by the user
+                    if drag_response.changed() {
+                        particle_count_changed = true;
                     }
                 });
 
                 // Quick selection buttons
                 ui.horizontal(|ui| {
-                    if ui.button("10,000").clicked() {
-                        self.particle_count_input = "10000".to_string();
-                        if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                            self.simulation.resize_buffer(
-                                &wgpu_render_state.device,
-                                &wgpu_render_state.queue,
-                                10_000,
-                            );
+                    let mut set_count = |count: u32| {
+                        if self.ui_particle_count != count {
+                            self.ui_particle_count = count;
+                            particle_count_changed = true; // Signal that resize is needed
                         }
+                    };
+
+                    if ui.button("10,000").clicked() {
+                        set_count(10_000);
                     }
                     if ui.button("100,000").clicked() {
-                        self.particle_count_input = "100000".to_string();
-                        if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                            self.simulation.resize_buffer(
-                                &wgpu_render_state.device,
-                                &wgpu_render_state.queue,
-                                100_000,
-                            );
-                        }
+                        set_count(100_000);
                     }
                     if ui.button("1,000,000").clicked() {
-                        self.particle_count_input = "1000000".to_string();
-                        if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                            self.simulation.resize_buffer(
-                                &wgpu_render_state.device,
-                                &wgpu_render_state.queue,
-                                1_000_000,
-                            );
-                        }
+                        set_count(1_000_000);
                     }
                 });
 
+                // Apply resize if the count changed via DragValue or buttons
+                if particle_count_changed {
+                    // Ensure the count is valid before resizing
+                    let count_to_set = self.ui_particle_count.max(1);
+                    self.ui_particle_count = count_to_set; // Update UI state in case it was clamped to min
+
+                    if let Some(wgpu_render_state) = frame.wgpu_render_state() {
+                        self.simulation.resize_buffer(
+                            &wgpu_render_state.device,
+                            &wgpu_render_state.queue,
+                            count_to_set,
+                        );
+                    }
+                }
                 ui.separator();
                 ui.heading("Display");
 
