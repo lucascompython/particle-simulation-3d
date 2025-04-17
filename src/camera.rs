@@ -120,7 +120,7 @@ impl Camera {
         self.get_right().cross(self.get_forward())
     }
 
-    pub fn process_keyboard(&mut self, key: egui::Key, shift_down: bool, dt: f32) -> bool {
+    pub fn process_keyboard(&mut self, key: Option<egui::Key>, shift_down: bool, dt: f32) -> bool {
         let mut moved = false;
 
         let forward = self.get_forward();
@@ -130,31 +130,32 @@ impl Camera {
         let speed = self.movement_speed * dt;
 
         match key {
-            egui::Key::W => {
+            Some(egui::Key::W) => {
                 self.position += forward * speed;
                 moved = true;
             }
-            egui::Key::S => {
+            Some(egui::Key::S) => {
                 self.position -= forward * speed;
                 moved = true;
             }
-            egui::Key::A => {
+            Some(egui::Key::A) => {
                 self.position -= right * speed;
                 moved = true;
             }
-            egui::Key::D => {
+            Some(egui::Key::D) => {
                 self.position += right * speed;
                 moved = true;
             }
-            egui::Key::Space => {
-                if shift_down {
-                    self.position -= up * speed;
-                } else {
-                    self.position += up * speed;
-                }
+            Some(egui::Key::Space) => {
+                self.position += up * speed;
                 moved = true;
             }
-            _ => {}
+            _ => {
+                if shift_down {
+                    self.position -= up * speed;
+                    moved = true;
+                }
+            }
         }
 
         if moved {

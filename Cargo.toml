@@ -16,7 +16,7 @@ egui-wgpu = "0.31"
 log = "0.4"
 glam = "0.30"
 bytemuck = "1.22"
-rand = "0.9"
+rand = { version = "0.9", default-features = false, features = ["small_rng"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

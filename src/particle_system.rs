@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use glam::{Vec3, Vec4};
+use rand::{Rng, SeedableRng, rngs::SmallRng};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -66,16 +67,18 @@ impl ParticleSystem {
         let particle_size = std::mem::size_of::<Particle>() as wgpu::BufferAddress;
         let total_size = particle_size * max_particles as wgpu::BufferAddress;
 
+        let mut rng = SmallRng::seed_from_u64(69);
+
         // Create initial particles
         let mut particles = Vec::with_capacity(max_particles as usize);
         for _ in 0..max_particles {
-            let r = rand::random::<f32>();
-            let g = rand::random::<f32>();
-            let b = rand::random::<f32>();
+            let r = rng.random::<f32>();
+            let g = rng.random::<f32>();
+            let b = rng.random::<f32>();
 
-            let phi = rand::random::<f32>() * std::f32::consts::PI * 2.0;
-            let theta = (rand::random::<f32>() - 0.5) * std::f32::consts::PI;
-            let radius = rand::random::<f32>() * 50.0;
+            let phi = rng.random::<f32>() * std::f32::consts::PI * 2.0;
+            let theta = (rng.random::<f32>() - 0.5) * std::f32::consts::PI;
+            let radius = rng.random::<f32>() * 50.0;
 
             let pos = Vec3::new(
                 radius * phi.cos() * theta.cos(),
@@ -84,9 +87,9 @@ impl ParticleSystem {
             );
 
             let vel = Vec3::new(
-                (rand::random::<f32>() - 0.5) * 0.1,
-                (rand::random::<f32>() - 0.5) * 0.1,
-                (rand::random::<f32>() - 0.5) * 0.1,
+                (rng.random::<f32>() - 0.5) * 0.1,
+                (rng.random::<f32>() - 0.5) * 0.1,
+                (rng.random::<f32>() - 0.5) * 0.1,
             );
 
             particles.push(Particle::new(pos, vel, Vec4::new(r, g, b, 1.0)));
@@ -211,14 +214,15 @@ impl ParticleSystem {
 
     pub fn reset(&mut self, queue: &wgpu::Queue) {
         let mut particles = Vec::with_capacity(self.max_particles as usize);
+        let mut rng = SmallRng::seed_from_u64(69);
         for _ in 0..self.max_particles {
-            let r = rand::random::<f32>();
-            let g = rand::random::<f32>();
-            let b = rand::random::<f32>();
+            let r = rng.random::<f32>();
+            let g = rng.random::<f32>();
+            let b = rng.random::<f32>();
 
-            let phi = rand::random::<f32>() * std::f32::consts::PI * 2.0;
-            let theta = (rand::random::<f32>() - 0.5) * std::f32::consts::PI;
-            let radius = rand::random::<f32>() * 50.0;
+            let phi = rng.random::<f32>() * std::f32::consts::PI * 2.0;
+            let theta = (rng.random::<f32>() - 0.5) * std::f32::consts::PI;
+            let radius = rng.random::<f32>() * 50.0;
 
             let pos = Vec3::new(
                 radius * phi.cos() * theta.cos(),
@@ -227,9 +231,9 @@ impl ParticleSystem {
             );
 
             let vel = Vec3::new(
-                (rand::random::<f32>() - 0.5) * 0.1,
-                (rand::random::<f32>() - 0.5) * 0.1,
-                (rand::random::<f32>() - 0.5) * 0.1,
+                (rng.random::<f32>() - 0.5) * 0.1,
+                (rng.random::<f32>() - 0.5) * 0.1,
+                (rng.random::<f32>() - 0.5) * 0.1,
             );
 
             particles.push(Particle::new(pos, vel, Vec4::new(r, g, b, 1.0)));

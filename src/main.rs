@@ -3,6 +3,8 @@
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
+    use std::sync::Arc;
+
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let native_options = eframe::NativeOptions {
@@ -15,6 +17,47 @@ fn main() -> eframe::Result {
                     .expect("Failed to load icon"),
             ),
         renderer: eframe::Renderer::Wgpu,
+        wgpu_options: egui_wgpu::WgpuConfiguration {
+            present_mode: wgpu::PresentMode::AutoVsync,
+            desired_maximum_frame_latency: None, // Use default
+
+            // This is where we customize the device setup:
+            wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
+                // Use default instance descriptor (important for web compatibility)
+                instance_descriptor: wgpu::InstanceDescriptor::default(),
+
+                // High performance is good for particle simulations
+                power_preference: wgpu::PowerPreference::HighPerformance,
+
+                // No custom adapter selector for better web compatibility
+                native_adapter_selector: None,
+
+                // THIS is where we configure the device limits:
+                device_descriptor: Arc::new(|adapter| {
+                    let mut limits = adapter.limits();
+
+                    // Increase storage buffer limits (needed for compute shaders)
+                    limits.max_storage_buffers_per_shader_stage =
+                        limits.max_storage_buffers_per_shader_stage.max(8);
+                    limits.max_storage_buffer_binding_size =
+                        limits.max_storage_buffer_binding_size.max(128 << 20); // 128 MB
+
+                    wgpu::DeviceDescriptor {
+                        label: Some("Particle Simulation Device"),
+                        required_features: wgpu::Features::empty(),
+                        required_limits: limits,
+                        memory_hints: wgpu::MemoryHints::default(),
+                    }
+                }),
+
+                trace_path: None,
+            }),
+
+            on_surface_error: Arc::new(|error| {
+                log::error!("Surface error: {:?}", error);
+                egui_wgpu::SurfaceErrorAction::RecreateSurface
+            }),
+        },
         depth_buffer: 0,
         multisampling: 1,
         ..Default::default()

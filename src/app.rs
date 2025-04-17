@@ -1,5 +1,5 @@
 use crate::camera::Camera;
-use crate::custom_renderer::{PaintableCallback, ParticlePainter};
+use crate::custom_renderer::{PaintableCallback, ParticlePainter, UnsafeParticleCallback};
 use crate::particle_system::ParticleSystem;
 use crate::renderer::ParticleRenderer;
 
@@ -109,8 +109,12 @@ impl ParticleApp {
         ] {
             if self.keys_down.contains(&key) {
                 self.camera
-                    .process_keyboard(key, self.shift_down, delta_time);
+                    .process_keyboard(Some(key), self.shift_down, delta_time);
             }
+        }
+
+        if self.shift_down {
+            self.camera.process_keyboard(None, true, delta_time);
         }
 
         // Get wgpu render state for queue access
@@ -344,23 +348,33 @@ impl eframe::App for ParticleApp {
 
             // Track mouse dragging for particle interaction
             self.mouse_dragging = input.pointer.primary_down();
-            let was_right_down = self.right_mouse_down;
-            self.right_mouse_down = input.pointer.secondary_down();
+            if input.pointer.secondary_down() {
+                // Get the actual pointer delta from egui (this is more reliable)
+                // ctx.output_mut(|o| o.cursor_icon = egui::CursorIcon::None);
+                let delta = input.pointer.delta();
 
-            // Handle mouse right click for camera rotation
-            if self.right_mouse_down {
-                ctx.set_cursor_icon(egui::CursorIcon::None);
-
-                // Calculate mouse delta
-                let delta_x = self.mouse_pos.0 - self.mouse_prev_pos.0;
-                let delta_y = self.mouse_pos.1 - self.mouse_prev_pos.1;
-
-                if delta_x != 0.0 || delta_y != 0.0 {
-                    self.camera.process_mouse_movement(delta_x, delta_y);
+                // Only rotate if there's actual movement
+                if delta.x != 0.0 || delta.y != 0.0 {
+                    self.camera.process_mouse_movement(delta.x, delta.y);
                 }
-            } else if was_right_down {
-                ctx.set_cursor_icon(egui::CursorIcon::Default);
             }
+            // let was_right_down = self.right_mouse_down;
+            // self.right_mouse_down = input.pointer.secondary_down();
+
+            // // Handle mouse right click for camera rotation
+            // if self.right_mouse_down {
+            //     ctx.set_cursor_icon(egui::CursorIcon::None);
+
+            //     // Calculate mouse delta
+            //     let delta_x = self.mouse_pos.0 - self.mouse_prev_pos.0;
+            //     let delta_y = self.mouse_pos.1 - self.mouse_prev_pos.1;
+
+            //     if delta_x != 0.0 || delta_y != 0.0 {
+            //         self.camera.process_mouse_movement(delta_x, delta_y);
+            //     }
+            // } else if was_right_down {
+            //     ctx.set_cursor_icon(egui::CursorIcon::Default);
+            // }
 
             // Handle scroll for cursor depth adjustment
             if input.raw_scroll_delta.y != 0.0 {
@@ -400,28 +414,15 @@ impl eframe::App for ParticleApp {
                 }
             }
 
-            // We need to create a new painter instance with owned resources
-            // This is necessary because the callback needs to be 'static
-            if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                let device = &wgpu_render_state.device;
+            let callback_obj = UnsafeParticleCallback {
+                render_pipeline_ptr: &self.renderer.render_pipeline as *const _,
+                camera_bind_group_ptr: &self.camera.bind_group as *const _,
+                particle_buffer_ptr: &self.particle_system.particle_buffer as *const _,
+                num_particles: self.particle_system.num_particles,
+            };
 
-                // Clone necessary GPU resources
-                let painter = ParticlePainter {
-                    render_pipeline: self.renderer.render_pipeline.clone(),
-                    camera_bind_group: self.camera.bind_group.clone(),
-                    particle_buffer: self.particle_system.particle_buffer.clone(),
-                    num_particles: self.particle_system.num_particles,
-                };
-
-                // Create the callback
-                let callback = PaintableCallback::new(painter);
-
-                // Create the paint callback
-                let callback = egui_wgpu::Callback::new_paint_callback(rect, callback);
-
-                // Add it to the UI
-                ui.painter().add(callback);
-            }
+            let callback = egui_wgpu::Callback::new_paint_callback(rect, callback_obj);
+            ui.painter().add(callback);
         });
 
         // Show UI if enabled
