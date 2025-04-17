@@ -1,10 +1,5 @@
 use egui::PaintCallbackInfo;
 use egui_wgpu::{CallbackResources, CallbackTrait};
-use wgpu::RenderPass;
-
-pub trait Paintable {
-    fn paint<'a>(&self, render_pass: &mut RenderPass<'a>);
-}
 
 pub struct UnsafeParticleCallback {
     pub render_pipeline_ptr: *const wgpu::RenderPipeline,
