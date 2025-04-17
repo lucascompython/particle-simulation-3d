@@ -1,20 +1,10 @@
-use bytemuck::{Pod, Zeroable};
+use super::{Particle, ParticleSimulator};
 use glam::{Vec3, Vec4};
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 use wgpu::util::DeviceExt;
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable)]
-pub struct Particle {
-    pub position: [f32; 3],
-    pub padding1: f32,
-    pub velocity: [f32; 3],
-    pub padding2: f32,
-    pub color: [f32; 4],
-}
-
 impl Particle {
-    fn new(position: Vec3, velocity: Vec3, color: Vec4) -> Self {
+    pub fn new(position: Vec3, velocity: Vec3, color: Vec4) -> Self {
         Self {
             position: position.into(),
             padding1: 0.0,
@@ -26,7 +16,7 @@ impl Particle {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct SimParams {
     delta_time: f32,
     gravity: f32,
@@ -40,7 +30,7 @@ struct SimParams {
     is_mouse_dragging: u32,
 }
 
-pub struct ParticleSystem {
+pub struct ComputeParticleSystem {
     pub particle_buffer: wgpu::Buffer,
     pub particle_buffer_staging: wgpu::Buffer,
     pub num_particles: u32,
@@ -58,7 +48,7 @@ pub struct ParticleSystem {
     pub sim_param_buffer: wgpu::Buffer,
 }
 
-impl ParticleSystem {
+impl ComputeParticleSystem {
     pub fn new(
         device: &wgpu::Device,
         max_particles: u32,
@@ -67,10 +57,10 @@ impl ParticleSystem {
         let particle_size = std::mem::size_of::<Particle>() as wgpu::BufferAddress;
         let total_size = particle_size * max_particles as wgpu::BufferAddress;
 
-        let mut rng = SmallRng::seed_from_u64(69);
-
-        // Create initial particles
+        // Create initial particles using SmallRng for WebAssembly compatibility
+        let mut rng = SmallRng::seed_from_u64(42);
         let mut particles = Vec::with_capacity(max_particles as usize);
+
         for _ in 0..max_particles {
             let r = rng.random::<f32>();
             let g = rng.random::<f32>();
@@ -154,8 +144,8 @@ impl ParticleSystem {
             layout: Some(&compute_pipeline_layout),
             module: compute_shader,
             entry_point: Some("main"),
-            compilation_options: Default::default(), // Add this field
-            cache: None,                             // Add this field
+            compilation_options: Default::default(),
+            cache: None,
         });
 
         // Create simulation parameters buffer
@@ -211,39 +201,10 @@ impl ParticleSystem {
             sim_param_buffer,
         }
     }
+}
 
-    pub fn reset(&mut self, queue: &wgpu::Queue) {
-        let mut particles = Vec::with_capacity(self.max_particles as usize);
-        let mut rng = SmallRng::seed_from_u64(69);
-        for _ in 0..self.max_particles {
-            let r = rng.random::<f32>();
-            let g = rng.random::<f32>();
-            let b = rng.random::<f32>();
-
-            let phi = rng.random::<f32>() * std::f32::consts::PI * 2.0;
-            let theta = (rng.random::<f32>() - 0.5) * std::f32::consts::PI;
-            let radius = rng.random::<f32>() * 50.0;
-
-            let pos = Vec3::new(
-                radius * phi.cos() * theta.cos(),
-                radius * theta.sin(),
-                radius * phi.sin() * theta.cos(),
-            );
-
-            let vel = Vec3::new(
-                (rng.random::<f32>() - 0.5) * 0.1,
-                (rng.random::<f32>() - 0.5) * 0.1,
-                (rng.random::<f32>() - 0.5) * 0.1,
-            );
-
-            particles.push(Particle::new(pos, vel, Vec4::new(r, g, b, 1.0)));
-        }
-
-        queue.write_buffer(&self.particle_buffer, 0, bytemuck::cast_slice(&particles));
-        self.gravity = 0.0;
-    }
-
-    pub fn update(&self, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
+impl ParticleSimulator for ComputeParticleSystem {
+    fn update(&mut self, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
         if self.paused {
             return;
         }
@@ -282,42 +243,119 @@ impl ParticleSystem {
         compute_pass.dispatch_workgroups(workgroup_count, 1, 1);
     }
 
-    // pub fn update(&self, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
-    //     if self.paused {
-    //         return;
-    //     }
+    fn reset(&mut self, queue: &wgpu::Queue) {
+        let mut rng = SmallRng::seed_from_u64(42);
+        let mut particles = Vec::with_capacity(self.max_particles as usize);
 
-    //     // Update simulation parameters
-    //     let sim_params = SimParams {
-    //         delta_time: 0.016, // Fixed timestep for predictable physics
-    //         gravity: self.gravity,
-    //         num_particles: self.num_particles,
-    //         color_mode: self.color_mode,
-    //         mouse_force: self.mouse_force,
-    //         mouse_radius: self.mouse_radius,
-    //         mouse_position_x: self.mouse_position[0],
-    //         mouse_position_y: self.mouse_position[1],
-    //         mouse_position_z: self.mouse_position[2],
-    //         is_mouse_dragging: if self.is_mouse_dragging { 1 } else { 0 },
-    //     };
+        for _ in 0..self.max_particles {
+            let r = rng.random::<f32>();
+            let g = rng.random::<f32>();
+            let b = rng.random::<f32>();
 
-    //     queue.write_buffer(
-    //         &self.sim_param_buffer,
-    //         0,
-    //         bytemuck::cast_slice(&[sim_params]),
-    //     );
+            let phi = rng.random::<f32>() * std::f32::consts::PI * 2.0;
+            let theta = (rng.random::<f32>() - 0.5) * std::f32::consts::PI;
+            let radius = rng.random::<f32>() * 50.0;
 
-    //     // Create compute pass
-    //     let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-    //         label: Some("Particle Compute Pass"),
-    //         timestamp_writes: None,
-    //     });
+            let pos = Vec3::new(
+                radius * phi.cos() * theta.cos(),
+                radius * theta.sin(),
+                radius * phi.sin() * theta.cos(),
+            );
 
-    //     compute_pass.set_pipeline(&self.compute_pipeline);
-    //     compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
+            let vel = Vec3::new(
+                (rng.random::<f32>() - 0.5) * 0.1,
+                (rng.random::<f32>() - 0.5) * 0.1,
+                (rng.random::<f32>() - 0.5) * 0.1,
+            );
 
-    //     // Dispatch one workgroup per 128 particles
-    //     let workgroup_count = ((self.num_particles as f32) / 128.0).ceil() as u32;
-    //     compute_pass.dispatch_workgroups(workgroup_count, 1, 1);
-    // }
+            particles.push(Particle::new(pos, vel, Vec4::new(r, g, b, 1.0)));
+        }
+
+        queue.write_buffer(&self.particle_buffer, 0, bytemuck::cast_slice(&particles));
+        self.gravity = 0.0;
+    }
+
+    fn get_vertex_buffer(&self) -> &wgpu::Buffer {
+        &self.particle_buffer
+    }
+
+    fn get_max_particles(&self) -> u32 {
+        self.max_particles
+    }
+
+    fn get_num_particles(&self) -> u32 {
+        self.num_particles
+    }
+
+    fn set_num_particles(&mut self, num: u32) {
+        self.num_particles = num.min(self.max_particles);
+    }
+
+    fn get_gravity(&self) -> f32 {
+        self.gravity
+    }
+
+    fn set_gravity(&mut self, gravity: f32) {
+        self.gravity = gravity;
+    }
+
+    fn get_color_mode(&self) -> u32 {
+        self.color_mode
+    }
+
+    fn set_color_mode(&mut self, mode: u32) {
+        self.color_mode = mode;
+    }
+
+    fn get_mouse_position(&self) -> [f32; 3] {
+        self.mouse_position
+    }
+
+    fn set_mouse_position(&mut self, pos: [f32; 3]) {
+        self.mouse_position = pos;
+    }
+
+    fn get_mouse_force(&self) -> f32 {
+        self.mouse_force
+    }
+
+    fn set_mouse_force(&mut self, force: f32) {
+        self.mouse_force = force;
+    }
+
+    fn get_mouse_radius(&self) -> f32 {
+        self.mouse_radius
+    }
+
+    fn set_mouse_radius(&mut self, radius: f32) {
+        self.mouse_radius = radius;
+    }
+
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+
+    fn set_paused(&mut self, paused: bool) {
+        self.paused = paused;
+    }
+
+    fn set_mouse_dragging(&mut self, dragging: bool) {
+        self.is_mouse_dragging = dragging;
+    }
+
+    fn is_mouse_dragging(&self) -> bool {
+        self.is_mouse_dragging
+    }
+
+    fn get_particle_size(&self) -> f32 {
+        self.particle_size
+    }
+
+    fn set_particle_size(&mut self, size: f32) {
+        self.particle_size = size;
+    }
+
+    fn get_particle_buffer(&self) -> &wgpu::Buffer {
+        &self.particle_buffer
+    }
 }

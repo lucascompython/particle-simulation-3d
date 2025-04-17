@@ -1,5 +1,25 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+// TODO: Check for webgpu without javascript
+#[cfg(target_arch = "wasm32")]
+fn is_webgpu_compute_supported() -> bool {
+    // Function to check WebGPU compute shader support
+    use eframe::wasm_bindgen::prelude::*;
+    use web_sys::Navigator;
+
+    let window = web_sys::window().unwrap();
+    let navigator: Navigator = window.navigator();
+
+    // Check if GPU is available at all
+    if js_sys::Reflect::has(&navigator, &JsValue::from_str("gpu")).unwrap_or(false) {
+        // WebGPU seems available, but we'll confirm compute support in the app
+        true
+    } else {
+        // No WebGPU
+        false
+    }
+}
+
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
@@ -18,6 +38,7 @@ fn main() -> eframe::Result {
             ),
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: egui_wgpu::WgpuConfiguration {
+            // TODO: check this
             present_mode: wgpu::PresentMode::AutoVsync,
             desired_maximum_frame_latency: None, // Use default
 
@@ -65,7 +86,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Particle Simulation",
         native_options,
-        Box::new(|cc| Ok(Box::new(particle_simulation::ParticleApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(particle_simulation::ParticleApp::new(cc, true)))),
     )
 }
 
@@ -73,11 +94,60 @@ fn main() -> eframe::Result {
 #[cfg(target_arch = "wasm32")]
 fn main() {
     use eframe::wasm_bindgen::JsCast as _;
+    use eframe::wasm_bindgen::prelude::*;
+    use std::sync::Arc;
+    use wgpu::util::is_browser_webgpu_supported;
 
     // Redirect `log` message to `console.log` and friends:
     eframe::WebLogger::init(log::LevelFilter::Debug).ok();
 
-    let web_options = eframe::WebOptions::default();
+    // let web_options = eframe::WebOptions::default();
+    let web_options = eframe::WebOptions {
+        wgpu_options: egui_wgpu::WgpuConfiguration {
+            // TODO: check this
+            present_mode: wgpu::PresentMode::AutoVsync,
+            desired_maximum_frame_latency: None, // Use default
+
+            // This is where we customize the device setup:
+            wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
+                // Use default instance descriptor (important for web compatibility)
+                instance_descriptor: wgpu::InstanceDescriptor::default(),
+
+                // High performance is good for particle simulations
+                power_preference: wgpu::PowerPreference::HighPerformance,
+
+                // No custom adapter selector for better web compatibility
+                native_adapter_selector: None,
+
+                // THIS is where we configure the device limits:
+                device_descriptor: Arc::new(|adapter| {
+                    let mut limits = adapter.limits();
+
+                    // Increase storage buffer limits (needed for compute shaders)
+                    limits.max_storage_buffers_per_shader_stage =
+                        limits.max_storage_buffers_per_shader_stage.max(8);
+                    limits.max_storage_buffer_binding_size =
+                        limits.max_storage_buffer_binding_size.max(128 << 20); // 128 MB
+
+                    wgpu::DeviceDescriptor {
+                        label: Some("Particle Simulation Device"),
+                        required_features: wgpu::Features::empty(),
+                        required_limits: limits,
+                        memory_hints: wgpu::MemoryHints::default(),
+                    }
+                }),
+
+                trace_path: None,
+            }),
+
+            on_surface_error: Arc::new(|error| {
+                log::error!("Surface error: {:?}", error);
+                egui_wgpu::SurfaceErrorAction::RecreateSurface
+            }),
+        },
+        depth_buffer: 0,
+        ..Default::default()
+    };
 
     wasm_bindgen_futures::spawn_local(async {
         let document = web_sys::window()
@@ -95,7 +165,12 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(particle_simulation::ParticleApp::new(cc)))),
+                Box::new(|cc| {
+                    Ok(Box::new(particle_simulation::ParticleApp::new(
+                        cc,
+                        is_webgpu_compute_supported(),
+                    )))
+                }),
             )
             .await;
 

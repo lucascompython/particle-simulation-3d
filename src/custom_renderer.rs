@@ -6,36 +6,36 @@ pub trait Paintable {
     fn paint<'a>(&self, render_pass: &mut RenderPass<'a>);
 }
 
-// A callback that contains a Paintable object
-pub struct PaintableCallback<T: Paintable + Send + Sync + 'static> {
-    paintable: T,
-}
+// // A callback that contains a Paintable object
+// pub struct PaintableCallback<T: Paintable + Send + Sync + 'static> {
+//     paintable: T,
+// }
 
-impl<T: Paintable + Send + Sync + 'static> PaintableCallback<T> {
-    pub fn new(paintable: T) -> Self {
-        Self { paintable }
-    }
-}
+// impl<T: Paintable + Send + Sync + 'static> PaintableCallback<T> {
+//     pub fn new(paintable: T) -> Self {
+//         Self { paintable }
+//     }
+// }
 
-impl<T: Paintable + Send + Sync + 'static> egui_wgpu::CallbackTrait for PaintableCallback<T> {
-    fn paint(
-        &self,
-        _info: PaintCallbackInfo,
-        render_pass: &mut wgpu::RenderPass<'static>,
-        _callback_resources: &CallbackResources,
-    ) {
-        // This ugly transmute is needed because the CallbackTrait demands 'static
-        // for the render_pass, but we need a shorter lifetime to call our paintable
-        // Safe because the render_pass is guaranteed to outlive the paint call
-        unsafe {
-            let render_pass_with_shorter_lifetime = std::mem::transmute::<
-                &mut wgpu::RenderPass<'static>,
-                &mut wgpu::RenderPass<'_>,
-            >(render_pass);
-            self.paintable.paint(render_pass_with_shorter_lifetime);
-        }
-    }
-}
+// impl<T: Paintable + Send + Sync + 'static> egui_wgpu::CallbackTrait for PaintableCallback<T> {
+//     fn paint(
+//         &self,
+//         _info: PaintCallbackInfo,
+//         render_pass: &mut wgpu::RenderPass<'static>,
+//         _callback_resources: &CallbackResources,
+//     ) {
+//         // This ugly transmute is needed because the CallbackTrait demands 'static
+//         // for the render_pass, but we need a shorter lifetime to call our paintable
+//         // Safe because the render_pass is guaranteed to outlive the paint call
+//         unsafe {
+//             let render_pass_with_shorter_lifetime = std::mem::transmute::<
+//                 &mut wgpu::RenderPass<'static>,
+//                 &mut wgpu::RenderPass<'_>,
+//             >(render_pass);
+//             self.paintable.paint(render_pass_with_shorter_lifetime);
+//         }
+//     }
+// }
 
 pub struct ParticlePainter {
     pub render_pipeline: wgpu::RenderPipeline,
