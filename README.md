@@ -11,3 +11,10 @@ This project also used this [template](https://github.com/kaphula/winit-egui-wgp
 - Add more color profiles
 - Improve wasm bundle size
 - Update to wgpu 25
+
+## Web Locally
+```bash
+trunk serve
+```
+And go to [http://127.0.0.1:8080/index.html#dev](http://127.0.0.1:8080/index.html#dev)   
+The `#dev` is to skip the cache [assets/sw.js](/assets/sw.js) provides.
