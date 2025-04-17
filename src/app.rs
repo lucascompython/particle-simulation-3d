@@ -1,5 +1,5 @@
 use crate::camera::Camera;
-use crate::custom_renderer::{PaintableCallback, ParticlePainter, UnsafeParticleCallback};
+use crate::custom_renderer::UnsafeParticleCallback;
 use crate::particle_system::ParticleSystem;
 use crate::renderer::ParticleRenderer;
 
