@@ -5,28 +5,32 @@ authors = ["Lucas de Linhares <lucasdelinhares@gmail.com>"]
 edition = "2024"
 
 [dependencies]
-egui = "0.31"
+egui = { version = "0.31", default-features = false }
 eframe = { version = "0.31", default-features = false, features = [
-    "default_fonts", # Embed the default egui fonts.
-    "wgpu",          # Use the glow rendering backend. Alternative: "wgpu".
-    "wayland",       # To support Linux (and CI)
+    "wgpu",
+    "wayland", # To support Linux (and CI)
     "x11",
 ] }
-wgpu = { version = "24", features = ["webgpu", "webgl"] }
+wgpu = "24"
 egui-wgpu = "0.31"
 log = "0.4"
-glam = "0.30"
+glam = { version = "0.30", features = ["fast-math"] }
 bytemuck = "1.22"
 rand = { version = "0.9", default-features = false, features = ["small_rng"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_logger = "0.11"
+env_logger = { version = "0.11", optional = true }
+
+
+[features]
+logs = ["dep:env_logger"]
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version = "24", features = ["webgl"] }
 wasm-bindgen-futures = "0.4"
-web-sys = "0.3"              # to access the DOM (to hide the loading text)
+web-sys = "0.3"                                 # to access the DOM (to hide the loading text)
 
 [profile.release]
 codegen-units = 1 # Allows LLVM to perform better optimization.

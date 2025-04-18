@@ -5,6 +5,7 @@
 fn main() -> eframe::Result {
     use std::sync::Arc;
 
+    #[cfg(feature = "logs")]
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let native_options = eframe::NativeOptions {

@@ -7,6 +7,7 @@ use crate::simulation::cpu::CpuParticleSimulation;
 use crate::simulation::transform_feedback::TransformFeedbackSimulation;
 use crate::simulation::{ParticleSimulation, SimParams, SimulationMethod};
 
+use egui::epaint::text::{FontInsert, InsertFontFamily};
 use glam::Vec3;
 use std::collections::HashSet;
 use std::time::Instant;
@@ -45,6 +46,21 @@ pub struct ParticleApp {
 
 impl ParticleApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        cc.egui_ctx.add_font(FontInsert::new(
+            "Ubuntu Light",
+            egui::FontData::from_static(include_bytes!("../assets/Ubuntu-Light.ttf")),
+            vec![
+                InsertFontFamily {
+                    family: egui::FontFamily::Proportional,
+                    priority: egui::epaint::text::FontPriority::Highest,
+                },
+                InsertFontFamily {
+                    family: egui::FontFamily::Monospace,
+                    priority: egui::epaint::text::FontPriority::Lowest,
+                },
+            ],
+        ));
+
         // Get the wgpu render state
         let wgpu_render_state = cc
             .wgpu_render_state
@@ -477,6 +493,7 @@ impl eframe::App for ParticleApp {
             self.mouse_dragging = input.pointer.primary_down();
             if input.pointer.secondary_down() {
                 // Get the actual pointer delta from egui (this is more reliable)
+                // TODO: Check this
                 // ctx.output_mut(|o| o.cursor_icon = egui::CursorIcon::None);
                 let delta = input.pointer.delta();
 
