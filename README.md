@@ -13,7 +13,7 @@ This project also used this [template](https://github.com/kaphula/winit-egui-wgp
 - Improve binary size
 - Update to wgpu 25
 
-## Web Locally
+## Test Web Locally
 ```bash
 trunk serve
 ```
