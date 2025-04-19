@@ -1,7 +1,7 @@
 # 3D Particle Simulation
 This project uses winit, wgpu and egui and is heavily inspired by [this project](https://github.com/Im-Rises/particle-simulator-webgl).
 
-This project initially used this [template](https://github.com/kaphula/winit-egui-wgpu-template) but I migrated to the [eframe template](https://github.com/emilk/eframe_template).
+This project initially used this [template](https://github.com/kaphula/winit-egui-wgpu-template) but I migrated to [eframe](https://github.com/emilk/egui/tree/master/crates/eframe) using the [eframe template](https://github.com/emilk/eframe_template).
 
 
 ## TODO:
