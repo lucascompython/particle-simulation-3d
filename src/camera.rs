@@ -1,8 +1,7 @@
 use bytemuck::{Pod, Zeroable};
-use egui_wgpu::wgpu::util::DeviceExt;
 use glam::{Mat4, Vec3};
 use std::f32::consts::PI;
-use winit::keyboard::KeyCode;
+use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
@@ -32,42 +31,39 @@ pub struct Camera {
     pub movement_speed: f32,
     pub rotation_speed: f32,
     pub uniform: CameraUniform,
-    pub buffer: egui_wgpu::wgpu::Buffer,
-    pub bind_group_layout: egui_wgpu::wgpu::BindGroupLayout,
-    pub bind_group: egui_wgpu::wgpu::BindGroup,
+    pub buffer: wgpu::Buffer,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
 }
 
 impl Camera {
-    pub fn new(device: &egui_wgpu::wgpu::Device, width: u32, height: u32) -> Self {
-        let aspect = width as f32 / height as f32;
+    pub fn new(device: &wgpu::Device, aspect: f32) -> Self {
         let uniform = CameraUniform::default();
 
-        let buffer = device.create_buffer_init(&egui_wgpu::wgpu::util::BufferInitDescriptor {
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
             contents: bytemuck::cast_slice(&[uniform]),
-            usage: egui_wgpu::wgpu::BufferUsages::UNIFORM | egui_wgpu::wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let bind_group_layout =
-            device.create_bind_group_layout(&egui_wgpu::wgpu::BindGroupLayoutDescriptor {
-                label: Some("Camera Bind Group Layout"),
-                entries: &[egui_wgpu::wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: egui_wgpu::wgpu::ShaderStages::VERTEX
-                        | egui_wgpu::wgpu::ShaderStages::FRAGMENT,
-                    ty: egui_wgpu::wgpu::BindingType::Buffer {
-                        ty: egui_wgpu::wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            });
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Camera Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
 
-        let bind_group = device.create_bind_group(&egui_wgpu::wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Camera Bind Group"),
             layout: &bind_group_layout,
-            entries: &[egui_wgpu::wgpu::BindGroupEntry {
+            entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: buffer.as_entire_binding(),
             }],
@@ -96,13 +92,7 @@ impl Camera {
 
     pub fn update_view_proj(&mut self) {
         // Create view matrix
-        let forward = Vec3::new(
-            self.yaw.cos() * self.pitch.cos(),
-            self.pitch.sin(),
-            self.yaw.sin() * self.pitch.cos(),
-        )
-        .normalize();
-
+        let forward = self.get_forward();
         let right = forward.cross(Vec3::Y).normalize();
         let up = right.cross(forward);
 
@@ -113,52 +103,59 @@ impl Camera {
         self.uniform.position = [self.position.x, self.position.y, self.position.z, 1.0];
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.aspect = width as f32 / height as f32;
-        self.update_view_proj();
-    }
-
-    pub fn process_keyboard(&mut self, key: KeyCode, dt: f32) -> bool {
-        let mut moved = false;
-
-        let forward = Vec3::new(
+    pub fn get_forward(&self) -> Vec3 {
+        Vec3::new(
             self.yaw.cos() * self.pitch.cos(),
             self.pitch.sin(),
             self.yaw.sin() * self.pitch.cos(),
         )
-        .normalize();
+        .normalize()
+    }
 
-        let right = forward.cross(Vec3::Y).normalize();
+    pub fn get_right(&self) -> Vec3 {
+        self.get_forward().cross(Vec3::Y).normalize()
+    }
+
+    pub fn get_up(&self) -> Vec3 {
+        self.get_right().cross(self.get_forward())
+    }
+
+    pub fn process_keyboard(&mut self, key: Option<egui::Key>, shift_down: bool, dt: f32) -> bool {
+        let mut moved = false;
+
+        let forward = self.get_forward();
+        let right = self.get_right();
         let up = Vec3::Y;
 
         let speed = self.movement_speed * dt;
 
         match key {
-            KeyCode::KeyW => {
+            Some(egui::Key::W) => {
                 self.position += forward * speed;
                 moved = true;
             }
-            KeyCode::KeyS => {
+            Some(egui::Key::S) => {
                 self.position -= forward * speed;
                 moved = true;
             }
-            KeyCode::KeyA => {
+            Some(egui::Key::A) => {
                 self.position -= right * speed;
                 moved = true;
             }
-            KeyCode::KeyD => {
+            Some(egui::Key::D) => {
                 self.position += right * speed;
                 moved = true;
             }
-            KeyCode::Space => {
+            Some(egui::Key::Space) => {
                 self.position += up * speed;
                 moved = true;
             }
-            KeyCode::ShiftLeft => {
-                self.position -= up * speed;
-                moved = true;
+            _ => {
+                if shift_down {
+                    self.position -= up * speed;
+                    moved = true;
+                }
             }
-            _ => {}
         }
 
         if moved {
@@ -176,7 +173,7 @@ impl Camera {
         self.update_view_proj();
     }
 
-    pub fn update_buffer(&self, queue: &egui_wgpu::wgpu::Queue) {
+    pub fn update_buffer(&self, queue: &wgpu::Queue) {
         queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[self.uniform]));
     }
 }

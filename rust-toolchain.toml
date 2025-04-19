@@ -1,0 +1,5 @@
+[toolchain]
+channel = "nightly"
+profile = "minimal"
+# TODO: Add additional targets
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
