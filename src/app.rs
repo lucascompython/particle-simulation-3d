@@ -46,6 +46,7 @@ pub struct ParticleApp {
 
 impl ParticleApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        // TODO: see why on release mode the font is not loading properly on some texts
         cc.egui_ctx.add_font(FontInsert::new(
             "Ubuntu Light",
             egui::FontData::from_static(include_bytes!("../assets/Ubuntu-Light.ttf")),
