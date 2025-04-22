@@ -38,7 +38,7 @@ impl ParticleSimulation for CpuParticleSimulation {
         if self.paused {
             return;
         }
-        // Update particles on CPU
+        // TODO: Make this parallel
         for particle in &mut self.particles[0..self.particle_count as usize] {
             // Apply gravity
             let mut velocity = Vec3::from(particle.velocity);

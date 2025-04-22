@@ -21,16 +21,16 @@ rand = { version = "0.9", default-features = false, features = ["small_rng"] }
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = { version = "0.11", optional = true }
-
-
-[features]
-logs = ["dep:env_logger"]
+mimalloc = { version = "0.1" }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "24", features = ["webgl"] }
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"                                 # to access the DOM (to hide the loading text)
+
+[features]
+logs = ["dep:env_logger"]
 
 [profile.release]
 codegen-units = 1 # Allows LLVM to perform better optimization.
