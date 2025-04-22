@@ -29,6 +29,7 @@ impl CallbackTrait for ClonedParticleCallback {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.particle_buffer.slice(..));
+        // TODO: See this
         render_pass.draw(0..1, 0..self.num_particles);
     }
 }

@@ -62,7 +62,7 @@ fn main() -> eframe::Result {
             }),
 
             on_surface_error: Arc::new(|error| {
-                log::error!("Surface error: {:?}", error);
+                eprintln!("Surface error: {:?}", error);
                 egui_wgpu::SurfaceErrorAction::RecreateSurface
             }),
         },

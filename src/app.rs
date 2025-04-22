@@ -10,7 +10,10 @@ use crate::simulation::{ParticleSimulation, SimParams, SimulationMethod};
 use egui::epaint::text::{FontInsert, InsertFontFamily};
 use glam::Vec3;
 use std::collections::HashSet;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
+#[cfg(target_arch = "wasm32")]
+use web_time::Instant;
 
 pub struct ParticleApp {
     simulation: Box<dyn ParticleSimulation>,
