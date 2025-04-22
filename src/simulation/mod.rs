@@ -14,7 +14,11 @@ pub enum SimulationMethod {
 }
 
 pub trait ParticleSimulation {
-    fn new(device: &Device, initial_particle_count: u32) -> Self
+    fn new(
+        device: &Device,
+        initial_particle_count: u32,
+        surface_format: wgpu::TextureFormat,
+    ) -> Self
     where
         Self: Sized;
     fn update(
@@ -100,7 +104,7 @@ pub fn generate_initial_particles(count: u32) -> Vec<Particle> {
         let g = rng.random::<f32>();
         let b = rng.random::<f32>();
 
-        let phi = rng.random::<f32>() * std::f32::consts::PI * 2.0;
+        let phi = rng.random::<f32>() * std::f32::consts::TAU;
         let theta = (rng.random::<f32>() - 0.5) * std::f32::consts::PI;
         let radius = rng.random::<f32>() * 50.0;
 

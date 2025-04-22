@@ -5,154 +5,225 @@ use wgpu::util::DeviceExt;
 
 pub struct TransformFeedbackSimulation {
     particle_buffers: [wgpu::Buffer; 2],
-    current_buffer: usize,
     uniform_buffer: wgpu::Buffer,
-    bind_groups: [wgpu::BindGroup; 2],
-    bind_group_layout: wgpu::BindGroupLayout,
-    render_pipeline: wgpu::RenderPipeline,
+    pipeline: wgpu::RenderPipeline,
+    uniform_bind_group: wgpu::BindGroup,
     particle_count: u32,
+    current_buffer_idx: usize,
     paused: bool,
+
+    dummy_texture: wgpu::Texture,
+    dummy_texture_view: wgpu::TextureView,
 }
 
 impl ParticleSimulation for TransformFeedbackSimulation {
-    fn new(device: &wgpu::Device, initial_particle_count: u32) -> Self {
+    fn new(
+        device: &wgpu::Device,
+        initial_particle_count: u32,
+        // TODO: See if its possible to make surface_format specific to Tranform Feedback
+        surface_format: wgpu::TextureFormat,
+    ) -> Self {
         let particles = generate_initial_particles(initial_particle_count);
+        let buffer_size =
+            (std::mem::size_of::<Particle>() as u64) * (initial_particle_count as u64);
 
         // Create ping-pong buffers
-        let buffer_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("TF Particle Buffer A"),
-            contents: bytemuck::cast_slice(&particles),
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::VERTEX,
-        });
+        // Usage:
+        // - VERTEX: Input to the simulation vertex shader, and input to the final render pass.
+        // - STORAGE: wgpu might require this for TF emulation or internal mechanisms.
+        // - COPY_DST: To allow resetting/resizing by writing new data.
+        // - COPY_SRC: Potentially useful for debugging, but not strictly required now.
+        let buffer_usage =
+            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
 
-        let buffer_b = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("TF Particle Buffer B"),
-            size: (std::mem::size_of::<Particle>() as u64) * (initial_particle_count as u64),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX,
-            mapped_at_creation: false,
-        });
+        let particle_buffers = [
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("TF Particle Buffer 0"),
+                contents: bytemuck::cast_slice(&particles),
+                usage: buffer_usage,
+            }),
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("TF Particle Buffer 1"),
+                size: buffer_size,
+                usage: buffer_usage,
+                mapped_at_creation: false,
+            }),
+        ];
 
-        // Create uniform buffer for simulation parameters
+        // Uniform buffer for simulation parameters
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("TF Simulation Params"),
-            size: std::mem::size_of::<SimParams>() as u64,
+            label: Some("TF SimParams Buffer"),
+            size: std::mem::size_of::<SimParams>() as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        // Create shader for transform feedback (vertex shader based simulation)
-        let tf_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Transform Feedback Shader"),
+        let dummy_texture_desc = wgpu::TextureDescriptor {
+            label: Some("TF Dummy Texture"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: surface_format, // Use a known format
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT, // Essential usage
+            view_formats: &[],
+        };
+        let dummy_texture = device.create_texture(&dummy_texture_desc);
+        let dummy_texture_view = dummy_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // --- Shader and Pipeline Setup ---
+        let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("TF Simulation Shader"),
             source: wgpu::ShaderSource::Wgsl(
                 include_str!("../shaders/transform_feedback.wgsl").into(),
             ),
         });
 
-        // Create bind group layout
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("TF Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        // Bind group layout for uniforms
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("TF Uniform Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX, // Only used in vertex shader
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None,
+                        min_binding_size: wgpu::BufferSize::new(
+                            std::mem::size_of::<SimParams>() as _
+                        ),
                     },
                     count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
+                }],
+            });
+
+        // Bind group for uniforms
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("TF Uniform Bind Group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
         });
 
-        // Create bind groups for ping-ponging
-        let bind_group_a = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("TF Bind Group A"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buffer_a.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: buffer_b.as_entire_binding(),
-                },
-            ],
-        });
-
-        let bind_group_b = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("TF Bind Group B"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buffer_b.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: buffer_a.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Create pipeline layout
+        // Pipeline layout
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("TF Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
+            label: Some("TF Simulation Pipeline Layout"),
+            bind_group_layouts: &[&uniform_bind_group_layout],
             push_constant_ranges: &[],
         });
 
-        // Create render pipeline (this is not for display but for simulation)
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        // Vertex buffer layout describing the Particle struct
+        let particle_buffer_layout = wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Particle>() as wgpu::BufferAddress,
+            // Step mode INSTANCE is wrong here, we want one vertex shader invocation per particle.
+            // Use VERTEX step mode, and draw `particle_count` vertices.
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                // Match Particle struct layout and shader @location inputs
+                // position
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0, // Corresponds to @location(0) in shader
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                // padding1
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32, // Assuming padding is f32
+                },
+                // velocity
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                // padding2
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
+                    shader_location: 3,
+                    format: wgpu::VertexFormat::Float32, // Assuming padding is f32
+                },
+                // color
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 4,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+            ],
+        };
+
+        // Create the simulation pipeline
+        // This pipeline reads from a vertex buffer and uses Transform Feedback
+        // (implicitly via wgpu based on shader outputs and no fragment stage)
+        // to write to another buffer.
+        // let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        //     label: Some("TF Simulation Pipeline"),
+        //     layout: Some(&pipeline_layout),
+        //     vertex: wgpu::VertexState {
+        //         module: &shader_module,
+        //         entry_point: Some("vs_main"),
+        //         buffers: &[particle_buffer_layout], // Describes the input vertex buffer
+        //         compilation_options: Default::default(),
+        //     },
+        //     // fragment: None, // No fragment shader needed for simulation pass
+        //     fragment: Some(wgpu::FragmentState {
+        //         module: &shader_module,             // Reuse the same shader module
+        //         entry_point: Some("fs_dummy_main"), // Reference the dummy entry point we added
+        //         targets: &[Some(wgpu::ColorTargetState {
+        //             format: surface_format, // Match the dummy texture format used in the pass
+        //             blend: None,            // No blending needed
+        //             write_mask: wgpu::ColorWrites::empty(), // IMPORTANT: Prevent any actual color writes
+        //         })],
+        //         compilation_options: Default::default(),
+        //     }),
+        //     primitive: wgpu::PrimitiveState {
+        //         topology: wgpu::PrimitiveTopology::PointList, // Process one vertex per particle
+        //         ..Default::default()
+        //     },
+        //     depth_stencil: Some(wgpu::DepthStencilState {
+        //         format: wgpu::TextureFormat::Depth32Float, // Or Depth24Plus, Depth24PlusStencil8
+        //         depth_write_enabled: false,                // Don't write depth
+        //         depth_compare: wgpu::CompareFunction::Always, // Don't actually test depth
+        //         stencil: wgpu::StencilState::default(),    // Default stencil state (disabled)
+        //         bias: wgpu::DepthBiasState::default(),
+        //     }),
+
+        //     multisample: wgpu::MultisampleState::default(), // No multisampling needed
+        //     multiview: None,
+        //     cache: None,
+        // });
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("TF Simulation Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &tf_shader,
+                module: &shader_module,
                 entry_point: Some("vs_main"),
-                buffers: &[],
+                buffers: &[particle_buffer_layout],
                 compilation_options: Default::default(),
             },
-            fragment: None, // We don't need fragment shader for simulation
+            // Keep the FragmentState with dummy entry point and color target declaration
+            fragment: Some(wgpu::FragmentState {
+                module: &shader_module,
+                entry_point: Some("fs_dummy_main"), // Reference the dummy entry point
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: surface_format, // Match the dummy texture format
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::empty(), // Prevent actual writes
+                })],
+                compilation_options: Default::default(),
+            }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::PointList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
+                ..Default::default()
             },
+            // *** REMOVE the depth_stencil field ***
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
@@ -160,120 +231,119 @@ impl ParticleSimulation for TransformFeedbackSimulation {
         });
 
         Self {
-            particle_buffers: [buffer_a, buffer_b],
-            current_buffer: 0,
+            particle_buffers,
             uniform_buffer,
-            bind_groups: [bind_group_a, bind_group_b],
-            bind_group_layout,
-            render_pipeline,
+            pipeline,
+            uniform_bind_group,
             particle_count: initial_particle_count,
+            current_buffer_idx: 0,
             paused: false,
+            dummy_texture,
+            dummy_texture_view,
         }
     }
 
     fn update(
         &mut self,
-        _device: &wgpu::Device,
+        device: &wgpu::Device, // Added device argument
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         params: &SimParams,
     ) {
+        if self.paused || self.particle_count == 0 {
+            return;
+        }
+
         // Update simulation parameters
         queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[*params]));
 
-        // Create render pass for simulation (not actually rendering to screen)
+        let input_buffer_idx = self.current_buffer_idx;
+        let output_buffer_idx = 1 - input_buffer_idx;
+
+        // Create render pass for simulation (no color/depth attachments)
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut sim_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("TF Simulation Pass"),
-                color_attachments: &[],
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.dummy_texture_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        // LoadOp::Clear or LoadOp::Load are fine. Clear might be marginally better.
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        // StoreOp::Discard is important as we don't need the result.
+                        store: wgpu::StoreOp::Discard,
+                    },
+                })],
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.bind_groups[self.current_buffer], &[]);
-            render_pass.draw(0..self.particle_count, 0..1);
-        }
+            sim_pass.set_pipeline(&self.pipeline);
+            sim_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
 
-        // Swap buffers for next frame
-        self.current_buffer = 1 - self.current_buffer;
+            // Set the INPUT vertex buffer
+            sim_pass.set_vertex_buffer(
+                0, // Corresponds to buffers[0] in pipeline descriptor
+                self.particle_buffers[input_buffer_idx].slice(..),
+            );
+
+            // Set the OUTPUT buffer for Transform Feedback
+            // Use set_vertex_buffer with a slot index >= number of input buffers
+            // Slot 1 here corresponds to vertex_output_buffer_layouts[0]
+            sim_pass.set_vertex_buffer(
+                1, // Slot for the *output* buffer
+                self.particle_buffers[output_buffer_idx].slice(..),
+            );
+
+            // Draw particle_count points, invoking the vertex shader for each
+            sim_pass.draw(0..self.particle_count, 0..1);
+        } // sim_pass is dropped, recording ends
+
+        // Swap buffers for the next frame
+        self.current_buffer_idx = output_buffer_idx;
     }
 
     fn resize_buffer(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, new_count: u32) {
         if new_count == self.particle_count {
             return;
         }
+        if new_count == 0 {
+            self.particle_count = 0;
+            // Optionally destroy buffers here if count goes to 0 permanently
+            return;
+        }
 
-        // Generate initial particles for the new count
         let particles = generate_initial_particles(new_count);
-
-        // Create new buffers with the appropriate size
         let buffer_size = (std::mem::size_of::<Particle>() as u64) * (new_count as u64);
+        let buffer_usage =
+            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
 
-        let buffer_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("TF Particle Buffer A"),
-            contents: bytemuck::cast_slice(&particles),
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::VERTEX,
-        });
+        // Destroy old buffers before creating new ones
+        self.particle_buffers[0].destroy();
+        self.particle_buffers[1].destroy();
 
-        let buffer_b = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("TF Particle Buffer B"),
-            size: buffer_size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX,
-            mapped_at_creation: false,
-        });
+        self.particle_buffers = [
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("TF Particle Buffer 0"),
+                contents: bytemuck::cast_slice(&particles),
+                usage: buffer_usage,
+            }),
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("TF Particle Buffer 1"),
+                size: buffer_size,
+                usage: buffer_usage,
+                mapped_at_creation: false,
+            }),
+        ];
 
-        // Create bind groups for ping-ponging with new buffers
-        let bind_group_a = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("TF Bind Group A"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buffer_a.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: buffer_b.as_entire_binding(),
-                },
-            ],
-        });
-
-        let bind_group_b = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("TF Bind Group B"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buffer_b.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: buffer_a.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Update struct fields
-        self.particle_buffers = [buffer_a, buffer_b];
-        self.bind_groups = [bind_group_a, bind_group_b];
         self.particle_count = new_count;
-        self.current_buffer = 0;
+        self.current_buffer_idx = 0; // Start reading from buffer 0 again
     }
 
     fn get_particle_buffer(&self) -> &wgpu::Buffer {
-        &self.particle_buffers[self.current_buffer]
+        // Return the buffer that currently holds the latest simulation results
+        &self.particle_buffers[self.current_buffer_idx]
     }
 
     fn get_method(&self) -> SimulationMethod {
@@ -283,19 +353,20 @@ impl ParticleSimulation for TransformFeedbackSimulation {
     fn get_particle_count(&self) -> u32 {
         self.particle_count
     }
-    fn reset(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        // Generate initial particles
-        let particles = generate_initial_particles(self.particle_count);
 
-        // Update buffer A with new particles
+    fn reset(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        if self.particle_count == 0 {
+            return;
+        }
+        let particles = generate_initial_particles(self.particle_count);
         queue.write_buffer(
-            &self.particle_buffers[0],
+            &self.particle_buffers[0], // Write to buffer 0
             0,
             bytemuck::cast_slice(&particles),
         );
-
-        // Reset to buffer 0 as current
-        self.current_buffer = 0;
+        // Optionally clear buffer 1 if needed, though it will be overwritten
+        // queue.write_buffer(&self.particle_buffers[1], 0, ...);
+        self.current_buffer_idx = 0; // Ensure we read from buffer 0 next
     }
 
     fn is_paused(&self) -> bool {
@@ -304,5 +375,11 @@ impl ParticleSimulation for TransformFeedbackSimulation {
 
     fn set_paused(&mut self, paused: bool) {
         self.paused = paused;
+    }
+}
+
+impl Drop for TransformFeedbackSimulation {
+    fn drop(&mut self) {
+        self.dummy_texture.destroy();
     }
 }

@@ -48,6 +48,8 @@ fn main() -> eframe::Result {
                     limits.max_storage_buffer_binding_size =
                         limits.max_storage_buffer_binding_size.max(128 << 20); // 128 MB
 
+                    let mut features = wgpu::Features::empty();
+
                     wgpu::DeviceDescriptor {
                         label: Some("Particle Simulation Device"),
                         required_features: wgpu::Features::empty(),
