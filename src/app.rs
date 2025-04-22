@@ -1,5 +1,5 @@
 use crate::camera::Camera;
-use crate::custom_renderer::UnsafeParticleCallback;
+use crate::custom_renderer::ClonedParticleCallback;
 use crate::renderer::ParticleRenderer;
 
 use crate::simulation::compute::ComputeParticleSimulation;
@@ -542,10 +542,11 @@ impl eframe::App for ParticleApp {
                 }
             }
 
-            let callback_obj = UnsafeParticleCallback {
-                render_pipeline_ptr: &self.renderer.render_pipeline as *const _,
-                camera_bind_group_ptr: &self.camera.bind_group as *const _,
-                particle_buffer_ptr: self.simulation.get_particle_buffer() as *const _,
+            let callback_obj = ClonedParticleCallback {
+                render_pipeline: self.renderer.render_pipeline.clone(),
+                camera_bind_group: self.camera.bind_group.clone(),
+                particle_buffer: self.simulation.get_particle_buffer().clone(),
+                num_particles: self.simulation.get_particle_count(),
             };
 
             let callback = egui_wgpu::Callback::new_paint_callback(rect, callback_obj);
