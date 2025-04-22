@@ -22,6 +22,7 @@ fn main() -> eframe::Result {
                     .expect("Failed to load icon"),
             ),
         renderer: eframe::Renderer::Wgpu,
+        // TODO: Check this
         wgpu_options: egui_wgpu::WgpuConfiguration {
             present_mode: wgpu::PresentMode::AutoVsync,
             desired_maximum_frame_latency: None, // Use default
