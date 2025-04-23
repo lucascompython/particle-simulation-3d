@@ -129,11 +129,12 @@ impl ParticleApp {
             }
         };
 
-        // Create renderer
-        let particle_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Particle Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/particle.wgsl").into()),
-        });
+        let particle_shader = unsafe {
+            device.create_shader_module_trusted(
+                wgpu::include_wgsl!("shaders/particle.wgsl"),
+                wgpu::ShaderRuntimeChecks::unchecked(),
+            )
+        };
 
         let surface_format = wgpu_render_state.target_format;
         let renderer = ParticleRenderer::new(device, &camera, &surface_format, &particle_shader);

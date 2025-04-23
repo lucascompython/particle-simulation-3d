@@ -40,10 +40,12 @@ impl ParticleSimulation for ComputeParticleSimulation {
         });
 
         // Create compute shader
-        let compute_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Compute Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/compute.wgsl").into()),
-        });
+        let compute_shader = unsafe {
+            device.create_shader_module_trusted(
+                wgpu::include_wgsl!("../shaders/compute.wgsl"),
+                wgpu::ShaderRuntimeChecks::unchecked(),
+            )
+        };
 
         // Create bind group layout
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

@@ -76,12 +76,12 @@ impl ParticleSimulation for TransformFeedbackSimulation {
         let dummy_texture_view = dummy_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         // --- Shader and Pipeline Setup ---
-        let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("TF Simulation Shader"),
-            source: wgpu::ShaderSource::Wgsl(
-                include_str!("../shaders/transform_feedback.wgsl").into(),
-            ),
-        });
+        let shader_module = unsafe {
+            device.create_shader_module_trusted(
+                wgpu::include_wgsl!("../shaders/transform_feedback.wgsl"),
+                wgpu::ShaderRuntimeChecks::unchecked(),
+            )
+        };
 
         // Bind group layout for uniforms
         let uniform_bind_group_layout =
