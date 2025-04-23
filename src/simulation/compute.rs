@@ -14,7 +14,11 @@ pub struct ComputeParticleSimulation {
 }
 
 impl ParticleSimulation for ComputeParticleSimulation {
-    fn new(device: &wgpu::Device, initial_particle_count: u32) -> Self {
+    fn new(
+        device: &wgpu::Device,
+        initial_particle_count: u32,
+        _surface_format: wgpu::TextureFormat,
+    ) -> Self {
         // Create initial particles
         let particles = generate_initial_particles(initial_particle_count);
 

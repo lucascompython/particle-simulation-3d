@@ -13,7 +13,7 @@ eframe = { version = "0.31", default-features = false, features = [
 ] }
 wgpu = "24"
 egui-wgpu = "0.31"
-log = "0.4"
+log = { version = "0.4", optional = true }
 glam = { version = "0.30", features = ["fast-math"] }
 bytemuck = "1.22"
 rand = { version = "0.9", default-features = false, features = ["small_rng"] }
@@ -27,10 +27,11 @@ mimalloc = { version = "0.1" }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "24", features = ["webgl"] }
 wasm-bindgen-futures = "0.4"
+web-time = "1.1"                                # TODO: See if I can get rid of this
 web-sys = "0.3"                                 # to access the DOM (to hide the loading text)
 
 [features]
-logs = ["dep:env_logger"]
+logs = ["dep:env_logger", "dep:log"]
 
 [profile.release]
 codegen-units = 1 # Allows LLVM to perform better optimization.

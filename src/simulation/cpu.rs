@@ -11,7 +11,11 @@ pub struct CpuParticleSimulation {
 }
 
 impl ParticleSimulation for CpuParticleSimulation {
-    fn new(device: &wgpu::Device, initial_particle_count: u32) -> Self {
+    fn new(
+        device: &wgpu::Device,
+        initial_particle_count: u32,
+        _surface_format: wgpu::TextureFormat,
+    ) -> Self {
         let particles = generate_initial_particles(initial_particle_count);
 
         let particle_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

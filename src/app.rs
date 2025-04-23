@@ -10,10 +10,14 @@ use crate::simulation::{ParticleSimulation, SimParams, SimulationMethod};
 use egui::epaint::text::{FontInsert, InsertFontFamily};
 use glam::Vec3;
 use std::collections::HashSet;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
+#[cfg(target_arch = "wasm32")]
+use web_time::Instant;
 
 pub struct ParticleApp {
     simulation: Box<dyn ParticleSimulation>,
+    surface_format: wgpu::TextureFormat,
     renderer: ParticleRenderer,
     camera: Camera,
 
@@ -94,20 +98,33 @@ impl ParticleApp {
             SimulationMethod::TransformFeedback
         };
 
-        // Create simulation based on method
+        let surface_format = wgpu_render_state.target_format;
+
         let initial_particles;
         let simulation: Box<dyn ParticleSimulation> = match default_method {
             SimulationMethod::Cpu => {
                 initial_particles = 10_000;
-                Box::new(CpuParticleSimulation::new(device, initial_particles))
+                Box::new(CpuParticleSimulation::new(
+                    device,
+                    initial_particles,
+                    surface_format,
+                ))
             }
             SimulationMethod::ComputeShader => {
                 initial_particles = 1_000_000;
-                Box::new(ComputeParticleSimulation::new(device, initial_particles))
+                Box::new(ComputeParticleSimulation::new(
+                    device,
+                    initial_particles,
+                    surface_format,
+                ))
             }
             SimulationMethod::TransformFeedback => {
                 initial_particles = 100_000;
-                Box::new(TransformFeedbackSimulation::new(device, initial_particles))
+                Box::new(TransformFeedbackSimulation::new(
+                    device,
+                    initial_particles,
+                    surface_format,
+                ))
             }
         };
 
@@ -122,6 +139,7 @@ impl ParticleApp {
 
         Self {
             simulation,
+            surface_format,
             renderer,
             camera,
 
@@ -161,13 +179,21 @@ impl ParticleApp {
 
         // Create new simulation with the same particle count
         self.simulation = match new_method {
-            SimulationMethod::Cpu => Box::new(CpuParticleSimulation::new(device, current_count)),
-            SimulationMethod::ComputeShader => {
-                Box::new(ComputeParticleSimulation::new(device, current_count))
-            }
-            SimulationMethod::TransformFeedback => {
-                Box::new(TransformFeedbackSimulation::new(device, current_count))
-            }
+            SimulationMethod::Cpu => Box::new(CpuParticleSimulation::new(
+                device,
+                current_count,
+                self.surface_format,
+            )),
+            SimulationMethod::ComputeShader => Box::new(ComputeParticleSimulation::new(
+                device,
+                current_count,
+                self.surface_format,
+            )),
+            SimulationMethod::TransformFeedback => Box::new(TransformFeedbackSimulation::new(
+                device,
+                current_count,
+                self.surface_format,
+            )),
         };
 
         self.simulation.set_paused(was_paused);
