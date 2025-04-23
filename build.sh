@@ -69,12 +69,13 @@ if [ -z "$TARGET" ] && [ "$BUILD_WASM" = false ]; then
     exit 1
 fi
 
-BASE_RUSTFLAGS="-Csymbol-mangling-version=v0 -Zlocation-detail=none -Zfmt-debug=none"
+BASE_RUSTFLAGS="-Csymbol-mangling-version=v0 -Zlocation-detail=none"
 
 mv .cargo/.config.toml .cargo/config.toml
 
 if [ "$BUILD_WASM" = true ]; then
     echo "Building particle-simulation for web..."
+    # TODO: See if I can enable this feature
     WASM_RUSTFLAGS="$BASE_RUSTFLAGS -C target-feature=-nontrapping-fptoint"
     if [ -n "$PUBLIC_URL" ]; then
         echo "Using public URL: $PUBLIC_URL"
@@ -90,7 +91,7 @@ if [ "$BUILD_WASM" = true ]; then
 fi
 
 if [ -n "$TARGET" ]; then
-    NATIVE_RUSTFLAGS="$BASE_RUSTFLAGS"
+    NATIVE_RUSTFLAGS="$BASE_RUSTFLAGS -Zfmt-debug=none"
     if [ "$NATIVE_OPT" = true ]; then
         echo "Building particle-simulation for $TARGET with native CPU optimizations..."
         NATIVE_RUSTFLAGS="$NATIVE_RUSTFLAGS -C target-cpu=native"
