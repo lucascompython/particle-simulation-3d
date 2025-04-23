@@ -95,7 +95,8 @@ impl ParticleApp {
         let default_method = if has_compute {
             SimulationMethod::ComputeShader
         } else {
-            SimulationMethod::TransformFeedback
+            // SimulationMethod::TransformFeedback
+            SimulationMethod::Cpu
         };
 
         let surface_format = wgpu_render_state.target_format;
@@ -103,7 +104,7 @@ impl ParticleApp {
         let initial_particles;
         let simulation: Box<dyn ParticleSimulation> = match default_method {
             SimulationMethod::Cpu => {
-                initial_particles = 10_000;
+                initial_particles = 100_000;
                 Box::new(CpuParticleSimulation::new(
                     device,
                     initial_particles,
