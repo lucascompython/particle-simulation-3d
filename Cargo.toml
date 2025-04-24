@@ -8,15 +8,16 @@ edition = "2024"
 egui = { version = "0.31", default-features = false, features = ["rayon"] }
 eframe = { version = "0.31", default-features = false, features = [
     "wgpu",
-    "wayland", # To support Linux (and CI)
+    "wayland",
     "x11",
 ] }
 wgpu = "24"
-egui-wgpu = "0.31"
+egui-wgpu = { version = "0.31", default-features = false }
 log = { version = "0.4", optional = true }
 glam = { version = "0.30", features = ["fast-math"] }
 bytemuck = "1.22"
 rand = { version = "0.9", default-features = false, features = ["small_rng"] }
+rayon = "1.10"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -27,8 +28,9 @@ mimalloc = { version = "0.1" }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "24", features = ["webgl"] }
 wasm-bindgen-futures = "0.4"
-web-time = "1.1"                                # TODO: See if I can get rid of this
-web-sys = "0.3"                                 # to access the DOM (to hide the loading text)
+wasm-bindgen-rayon = { version = "1.3", features = ["no-bundler"] }
+web-time = "1.1"                                                    # TODO: See if I can get rid of this
+web-sys = "0.3"                                                     # to access the DOM (to hide the loading text)
 
 [features]
 logs = ["dep:env_logger", "dep:log"]

@@ -76,7 +76,7 @@ mv .cargo/.config.toml .cargo/config.toml
 if [ "$BUILD_WASM" = true ]; then
     echo "Building particle-simulation for web..."
     # TODO: See if I can enable this feature
-    WASM_RUSTFLAGS="$BASE_RUSTFLAGS -C target-feature=-nontrapping-fptoint"
+    WASM_RUSTFLAGS="$BASE_RUSTFLAGS -C target-feature=-nontrapping-fptoint,+atomics"
     if [ -n "$PUBLIC_URL" ]; then
         echo "Using public URL: $PUBLIC_URL"
         RUSTFLAGS="$WASM_RUSTFLAGS" "$TRUNK_CMD" build --release --public-url "$PUBLIC_URL"

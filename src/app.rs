@@ -4,8 +4,7 @@ use crate::renderer::ParticleRenderer;
 
 use crate::simulation::compute::ComputeParticleSimulation;
 use crate::simulation::cpu::CpuParticleSimulation;
-use crate::simulation::transform_feedback::TransformFeedbackSimulation;
-use crate::simulation::{ParticleSimulation, SimParams, SimulationMethod};
+use crate::simulation::{ParticleSimulation, SimParams, SimulationMethod, SphereGeneration};
 
 use egui::epaint::text::{FontInsert, InsertFontFamily};
 use glam::Vec3;
@@ -27,6 +26,7 @@ pub struct ParticleApp {
     mouse_force: f32,
     mouse_radius: f32,
     mouse_position: [f32; 3],
+    max_dist_for_color: f32,
 
     // UI state
     show_ui: bool,
@@ -34,10 +34,14 @@ pub struct ParticleApp {
     fps_counter: u32,
     fps_timer: f32,
     last_update: Instant,
+    simulation_update_time: f32,
 
     current_method: SimulationMethod,
     available_methods: Vec<SimulationMethod>,
     ui_particle_count: u32,
+    // TODO: see if its possible to  remove the ui specific variable
+    generation_mode: SphereGeneration,
+    ui_generation_mode: SphereGeneration,
 
     // Input tracking
     mouse_pos: (f32, f32),
@@ -88,18 +92,15 @@ impl ParticleApp {
             available_methods.push(SimulationMethod::ComputeShader);
         }
 
-        // Transform feedback is available everywhere
-        available_methods.push(SimulationMethod::TransformFeedback);
-
         // Default to best available method
         let default_method = if has_compute {
             SimulationMethod::ComputeShader
         } else {
-            // SimulationMethod::TransformFeedback
             SimulationMethod::Cpu
         };
 
         let surface_format = wgpu_render_state.target_format;
+        let initial_generation_mode = SphereGeneration::Hollow;
 
         let initial_particles;
         let simulation: Box<dyn ParticleSimulation> = match default_method {
@@ -109,6 +110,7 @@ impl ParticleApp {
                     device,
                     initial_particles,
                     surface_format,
+                    initial_generation_mode,
                 ))
             }
             SimulationMethod::ComputeShader => {
@@ -117,14 +119,7 @@ impl ParticleApp {
                     device,
                     initial_particles,
                     surface_format,
-                ))
-            }
-            SimulationMethod::TransformFeedback => {
-                initial_particles = 100_000;
-                Box::new(TransformFeedbackSimulation::new(
-                    device,
-                    initial_particles,
-                    surface_format,
+                    initial_generation_mode,
                 ))
             }
         };
@@ -149,17 +144,21 @@ impl ParticleApp {
             color_mode: 0,
             mouse_force: 5.0,
             mouse_radius: 10.0,
-            mouse_position: [0.0, 0.0, 0.0],
+            mouse_position: [0.0, 0.0, 48.0],
+            max_dist_for_color: 50.0,
 
             show_ui: true,
             fps: 0.0,
             fps_counter: 0,
             fps_timer: 0.0,
             last_update: Instant::now(),
+            simulation_update_time: 0.0,
 
             current_method: default_method,
             available_methods,
             ui_particle_count: initial_particles,
+            generation_mode: initial_generation_mode,
+            ui_generation_mode: initial_generation_mode,
 
             mouse_pos: (0.0, 0.0),
             mouse_prev_pos: (0.0, 0.0),
@@ -185,16 +184,13 @@ impl ParticleApp {
                 device,
                 current_count,
                 self.surface_format,
+                self.generation_mode,
             )),
             SimulationMethod::ComputeShader => Box::new(ComputeParticleSimulation::new(
                 device,
                 current_count,
                 self.surface_format,
-            )),
-            SimulationMethod::TransformFeedback => Box::new(TransformFeedbackSimulation::new(
-                device,
-                current_count,
-                self.surface_format,
+                self.generation_mode,
             )),
         };
 
@@ -207,6 +203,7 @@ impl ParticleApp {
         // Calculate delta time
         let now = Instant::now();
         let delta_time = now.duration_since(self.last_update).as_secs_f32();
+
         self.last_update = now;
 
         // Update FPS counter
@@ -299,16 +296,23 @@ impl ParticleApp {
                     mouse_position: self.mouse_position,
                     is_mouse_dragging: if self.mouse_dragging { 1 } else { 0 },
                     damping: 0.99, // Add damping factor
-                    _padding1: 0,
+                    max_dist_for_color: self.max_dist_for_color,
                     _padding2: 0,
                 };
+
+                let update_start = Instant::now();
 
                 // Run the particle simulation using current method
                 self.simulation
                     .update(device, queue, &mut encoder, &sim_params);
 
+                let update_time_ms = update_start.elapsed().as_secs_f32() * 1000.0;
+                const ALPHA: f32 = 0.1;
+
                 // Submit the work
                 queue.submit(Some(encoder.finish()));
+                self.simulation_update_time =
+                    (1.0 - ALPHA) * self.simulation_update_time + ALPHA * update_time_ms;
             }
         }
     }
@@ -320,6 +324,10 @@ impl ParticleApp {
             .show(ctx, |ui| {
                 ui.heading("Statistics");
                 ui.label(format!("FPS: {:.1}", self.fps));
+                ui.label(format!(
+                    "Particles update time: {:.4} ms",
+                    self.simulation_update_time
+                ));
 
                 ui.separator();
                 ui.heading("Simulation");
@@ -327,8 +335,11 @@ impl ParticleApp {
                 ui.horizontal(|ui| {
                     if ui.button("Reset").clicked() {
                         if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                            self.simulation
-                                .reset(&wgpu_render_state.device, &wgpu_render_state.queue);
+                            self.simulation.reset(
+                                &wgpu_render_state.device,
+                                &wgpu_render_state.queue,
+                                self.generation_mode,
+                            );
                         }
                     }
 
@@ -346,9 +357,6 @@ impl ParticleApp {
                             let text = match method {
                                 SimulationMethod::Cpu => "CPU (Compatible Everywhere)",
                                 SimulationMethod::ComputeShader => "Compute Shader (Fastest)",
-                                SimulationMethod::TransformFeedback => {
-                                    "Transform Feedback (WebGL Compatible)"
-                                }
                             };
                             if ui
                                 .selectable_label(self.current_method == *method, text)
@@ -366,6 +374,26 @@ impl ParticleApp {
                         self.change_simulation_method(method, &wgpu_render_state.device);
                     }
                 }
+
+                ui.separator();
+                ui.heading("Generation");
+                let mut generation_mode_changed = false;
+                ui.horizontal(|ui| {
+                    generation_mode_changed |= ui
+                        .radio_value(
+                            &mut self.ui_generation_mode,
+                            SphereGeneration::Hollow,
+                            "Hollow Sphere",
+                        )
+                        .changed();
+                    generation_mode_changed |= ui
+                        .radio_value(
+                            &mut self.ui_generation_mode,
+                            SphereGeneration::Filled,
+                            "Filled Sphere",
+                        )
+                        .changed();
+                });
 
                 ui.separator();
                 ui.heading("Mouse Interaction");
@@ -418,10 +446,8 @@ impl ParticleApp {
                     ui.label("Count:");
                     // Use DragValue bound to the u32 field
                     let drag_response = ui.add(
-                        egui::DragValue::new(&mut self.ui_particle_count)
-                            .range(1..=5_000_000u32) // Set a reasonable range (min 1)
-                            .speed(100.0), // Adjust speed as needed (particles per point dragged)
-                                           // .suffix(" particles") // Optional suffix
+                        egui::DragValue::new(&mut self.ui_particle_count).speed(100.0), // Adjust speed as needed (particles per point dragged)
+                                                                                        // .suffix(" particles") // Optional suffix
                     );
 
                     // Check if the DragValue was changed by the user
@@ -451,16 +477,17 @@ impl ParticleApp {
                 });
 
                 // Apply resize if the count changed via DragValue or buttons
-                if particle_count_changed {
-                    // Ensure the count is valid before resizing
+                if particle_count_changed || generation_mode_changed {
                     let count_to_set = self.ui_particle_count.max(1);
-                    self.ui_particle_count = count_to_set; // Update UI state in case it was clamped to min
+                    self.ui_particle_count = count_to_set;
+                    self.generation_mode = self.ui_generation_mode;
 
                     if let Some(wgpu_render_state) = frame.wgpu_render_state() {
                         self.simulation.resize_buffer(
                             &wgpu_render_state.device,
                             &wgpu_render_state.queue,
                             count_to_set,
+                            self.generation_mode,
                         );
                     }
                 }
@@ -494,12 +521,11 @@ impl ParticleApp {
 
 impl eframe::App for ParticleApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        // Handle keyboard input
         if ctx.input(|i| i.key_pressed(egui::Key::U)) {
             self.show_ui = !self.show_ui;
         }
 
-        // Update key states and modifiers
+        // TODO: rethink keyboard input handling
         ctx.input(|input| {
             // Clear and rebuild the set of keys that are currently down
             self.keys_down.clear();
@@ -570,6 +596,7 @@ impl eframe::App for ParticleApp {
                 }
             }
 
+            // TODO: See about making this reference counted
             let callback_obj = ClonedParticleCallback {
                 render_pipeline: self.renderer.render_pipeline.clone(),
                 camera_bind_group: self.camera.bind_group.clone(),

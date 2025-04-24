@@ -26,6 +26,7 @@ impl ParticleRenderer {
             vertex: wgpu::VertexState {
                 module: shader,
                 entry_point: Some("vs_main"),
+                // TODO: See if i can remove the paddings
                 buffers: &[
                     // Particle buffer
                     wgpu::VertexBufferLayout {

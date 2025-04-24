@@ -8,6 +8,11 @@ pub struct ClonedParticleCallback {
     pub num_particles: u32,
 }
 
+#[cfg(target_arch = "wasm32")]
+unsafe impl Send for ClonedParticleCallback {}
+#[cfg(target_arch = "wasm32")]
+unsafe impl Sync for ClonedParticleCallback {}
+
 impl CallbackTrait for ClonedParticleCallback {
     fn prepare(
         &self,
