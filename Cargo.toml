@@ -33,6 +33,7 @@ web-time = "1.1"                                                    # TODO: See 
 web-sys = "0.3"                                                     # to access the DOM (to hide the loading text)
 
 [features]
+default = []
 logs = ["dep:env_logger", "dep:log"]
 
 [profile.release]
