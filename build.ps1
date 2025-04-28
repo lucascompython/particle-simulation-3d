@@ -2,6 +2,7 @@ param(
     [switch]$native,
     [string]$publicUrl = "",
     [switch]$wasm,
+    [switch]$wasmRayon,
     [switch]$ci
 )
 
@@ -24,19 +25,25 @@ $env:RUSTFLAGS = "-Csymbol-mangling-version=v0 -Zlocation-detail=none -Zfmt-debu
 Move-Item -Path ".cargo/.config.toml" -Destination ".cargo/config.toml" -Force
 
 
-if ($wasm -or $publicUrl -ne "") {
+if ($wasm -or $publicUrl -ne "" -or $wasmRayon) { # Check wasmRayon too
     Write-Host "Building particle-simulation for web..."
 
     $originalRustFlags = $env:RUSTFLAGS
     $env:RUSTFLAGS += " -C target-feature=-nontrapping-fptoint"
 
+    $trunkArgs = @("build", "--release")
+    if ($wasmRayon) {
+        Write-Host "Enabling wasm-rayon feature and atomics..."
+        $trunkArgs += "--features", "wasm-rayon"
+        $env:RUSTFLAGS += ",+atomics"
+    }
+    if ($publicUrl -ne "") {
+        Write-Host "Using public URL: $publicUrl"
+        $trunkArgs += "--public-url", $publicUrl
+    }
+
     try {
-        if ($publicUrl -ne "") {
-            Write-Host "Using public URL: $publicUrl"
-            & $trunkCmd build --release --public-url $publicUrl
-        } else {
-            & $trunkCmd build --release
-        }
+        & $trunkCmd $trunkArgs
 
         if ($LASTEXITCODE -ne 0) {
             throw "trunk build failed with exit code $LASTEXITCODE"

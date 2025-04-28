@@ -28,13 +28,17 @@ mimalloc = { version = "0.1" }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "24", features = ["webgl"] }
 wasm-bindgen-futures = "0.4"
-wasm-bindgen-rayon = { version = "1.3", features = ["no-bundler"] }
-web-time = "1.1"                                                    # TODO: See if I can get rid of this
-web-sys = "0.3"                                                     # to access the DOM (to hide the loading text)
+wasm-bindgen-rayon = { version = "1.3", features = [
+    "no-bundler",
+], optional = true }
+web-time = "1.1" # TODO: See if I can get rid of this
+web-sys = "0.3" # to access the DOM (to hide the loading text)
 
 [features]
 default = []
 logs = ["dep:env_logger", "dep:log"]
+# TODO: Performance gains are not certain yet
+wasm-rayon = ["wasm-bindgen-rayon"]
 
 [profile.release]
 codegen-units = 1 # Allows LLVM to perform better optimization.

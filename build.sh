@@ -2,6 +2,7 @@
 
 TARGET=""
 BUILD_WASM=false
+BUILD_WASM_RAYON=false
 NATIVE_OPT=false
 PUBLIC_URL=""
 CI_MODE=false
@@ -17,6 +18,9 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --wasm)
             BUILD_WASM=true
+            ;;
+        --wasm-rayon)
+            BUILD_WASM_RAYON=true
             ;;
         --native)
             NATIVE_OPT=true
@@ -39,7 +43,7 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         *)
             echo "Unknown parameter: $1"
-            echo "Usage: $0 [--target=<target>] [--wasm] [--native] [--public-url=<url>] [--ci]"
+            echo "Usage: $0 [--target=<target>] [--wasm] [--wasm-rayon] [--native] [--public-url=<url>] [--ci]"
             exit 1
             ;;
     esac
@@ -59,11 +63,12 @@ fi
 
 if [ -z "$TARGET" ] && [ "$BUILD_WASM" = false ]; then
     echo "Error: At least a target platform or the --wasm flag is required"
-    echo "Usage: $0 [--target=<target>] [--wasm] [--native] [--public-url=<url>] [--ci]"
+    echo "Usage: $0 [--target=<target>] [--wasm] [--wasm-rayon] [--native] [--public-url=<url>] [--ci]"
     echo "Examples:"
     echo "  $0 --target=x86_64-unknown-linux-gnu"
     echo "  $0 x86_64-unknown-linux-gnu --native"
     echo "  $0 --wasm"
+    echo "  $0 --wasm --wasm-rayon"
     echo "  $0 --wasm --public-url=https://example.com"
     echo "  $0 --wasm --ci"
     exit 1
@@ -75,13 +80,19 @@ mv .cargo/.config.toml .cargo/config.toml
 
 if [ "$BUILD_WASM" = true ]; then
     echo "Building particle-simulation for web..."
-    # TODO: See if I can enable this feature
-    WASM_RUSTFLAGS="$BASE_RUSTFLAGS -C target-feature=-nontrapping-fptoint,+atomics"
+    WASM_RUSTFLAGS="$BASE_RUSTFLAGS -C target-feature=-nontrapping-fptoint"
+    TRUNK_FEATURES=""
+    if [ "$BUILD_WASM_RAYON" = true ]; then
+        echo "Enabling wasm-rayon feature and atomics..."
+        TRUNK_FEATURES="--features wasm-rayon"
+        WASM_RUSTFLAGS="$WASM_RUSTFLAGS,+atomics"
+    fi
+
     if [ -n "$PUBLIC_URL" ]; then
         echo "Using public URL: $PUBLIC_URL"
-        RUSTFLAGS="$WASM_RUSTFLAGS" "$TRUNK_CMD" build --release --public-url "$PUBLIC_URL"
+        RUSTFLAGS="$WASM_RUSTFLAGS" "$TRUNK_CMD" build --release $TRUNK_FEATURES --public-url "$PUBLIC_URL"
     else
-        RUSTFLAGS="$WASM_RUSTFLAGS" "$TRUNK_CMD" build --release
+        RUSTFLAGS="$WASM_RUSTFLAGS" "$TRUNK_CMD" build --release $TRUNK_FEATURES
     fi
     if [ $? -ne 0 ]; then
         echo "Error: trunk build failed."
