@@ -14,7 +14,21 @@ This project initially used this [template](https://github.com/kaphula/winit-egu
 - Improve binary size
 - Update to wgpu 25
 
-## Test Web Locally
+## Build Locally
+
+### Build Release
+```bash
+./build.sh
+# OR
+./build.ps1
+```
+
+### Native Development
+```bash
+cargo run
+```
+
+### Web Development
 ```bash
 trunk serve
 ```
