@@ -1,5 +1,11 @@
 # 3D Particle Simulation
-This project uses winit, wgpu and egui and is heavily inspired by [this project](https://github.com/Im-Rises/particle-simulator-webgl).
+This project uses `Winit`, `Wgpu` and `Egui`.
+
+Its heavily inspired by [this project](https://github.com/Im-Rises/particle-simulator-webgl).
+
+I'm making this project with the goal of learning graphics programming and the differences between graphics library stacks.
+
+A 2D version of this simulation that uses `Zig` + `SDL3` + `Dawn/Wgpu-Native` + `ImGui` can be found [here](https://github.com/lucascompython/particle-simulation-2d).
 
 This project initially used this [template](https://github.com/kaphula/winit-egui-wgpu-template) but I migrated to [eframe](https://github.com/emilk/egui/tree/master/crates/eframe) using the [eframe template](https://github.com/emilk/eframe_template).
 
@@ -8,7 +14,7 @@ This project initially used this [template](https://github.com/kaphula/winit-egu
 - Add Web support
 - Improve performance, especially startup time
 - Add more settings and values to tinker with in the simulation
-- ~~Add 2D version, basically rewrite [this](https://github.com/lucascompython/particles).~~ Decided to pursue this with a different stack (Zig, SDL3, Dawn/Wgpu-native, ImGui) and in a [separate repository](https://github.com/lucascompython/particle-simulation-2d).
+- ~~Add 2D version, basically rewrite [this](https://github.com/lucascompython/particles).~~ Decided to pursue this with a different stack (Zig, SDL3, Dawn/Wgpu-Native, ImGui) and in a [separate repository](https://github.com/lucascompython/particle-simulation-2d).
 - Make CI work nicely
 - Add more color profiles
 - Improve binary size
