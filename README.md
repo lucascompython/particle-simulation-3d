@@ -8,7 +8,7 @@ This project initially used this [template](https://github.com/kaphula/winit-egu
 - Add Web support
 - Improve performance, especially startup time
 - Add more settings and values to tinker with in the simulation
-- Add 2D version, basically rewrite [this](https://github.com/lucascompython/particles) in wgpu
+- ~~Add 2D version, basically rewrite [this](https://github.com/lucascompython/particles).~~ Decided to pursue this with a different stack (Zig, SDL3, Dawn/Wgpu-native, ImGui) and in a [separate repository](https://github.com/lucascompython/particle-simulation-2d).
 - Make CI work nicely
 - Add more color profiles
 - Improve binary size
