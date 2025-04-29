@@ -79,7 +79,7 @@ BASE_RUSTFLAGS="-Csymbol-mangling-version=v0 -Zlocation-detail=none"
 mv .cargo/.config.toml .cargo/config.toml
 
 if [ "$BUILD_WASM" = true ]; then
-    echo "Building particle-simulation for web..."
+    echo "Building particle-simulation-3d for web..."
     WASM_RUSTFLAGS="$BASE_RUSTFLAGS -C target-feature=-nontrapping-fptoint"
     TRUNK_FEATURES=""
     if [ "$BUILD_WASM_RAYON" = true ]; then
@@ -104,10 +104,10 @@ fi
 if [ -n "$TARGET" ]; then
     NATIVE_RUSTFLAGS="$BASE_RUSTFLAGS -Zfmt-debug=none"
     if [ "$NATIVE_OPT" = true ]; then
-        echo "Building particle-simulation for $TARGET with native CPU optimizations..."
+        echo "Building particle-simulation-3d for $TARGET with native CPU optimizations..."
         NATIVE_RUSTFLAGS="$NATIVE_RUSTFLAGS -C target-cpu=native"
     else
-        echo "Building particle-simulation for $TARGET..."
+        echo "Building particle-simulation-3d for $TARGET..."
     fi
 
     NATIVE_RUSTFLAGS="$NATIVE_RUSTFLAGS -Clink-args=-fuse-ld=lld -Clink-args=-Wl,--icf=all"

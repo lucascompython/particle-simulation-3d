@@ -1,9 +1,9 @@
-var cacheName = "particle-simulation-pwa";
+var cacheName = "particle-simulation-3d-pwa";
 var filesToCache = [
   "./",
   "./index.html",
-  "./particle-simulation.js",
-  "./particle-simulation_bg.wasm",
+  "./particle-simulation-3d.js",
+  "./particle-simulation-3d_bg.wasm",
 ];
 
 /* Start the service worker and cache all of the app's content */

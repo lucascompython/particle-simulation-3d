@@ -68,9 +68,9 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "Particle Simulation",
+        "Particle Simulation 3D",
         native_options,
-        Box::new(|cc| Ok(Box::new(particle_simulation::ParticleApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(particle_simulation_3d::ParticleApp::new(cc)))),
     )
 }
 
@@ -100,7 +100,7 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(particle_simulation::ParticleApp::new(cc)))),
+                Box::new(|cc| Ok(Box::new(particle_simulation_3d::ParticleApp::new(cc)))),
             )
             .await;
 

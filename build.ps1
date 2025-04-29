@@ -26,7 +26,7 @@ Move-Item -Path ".cargo/.config.toml" -Destination ".cargo/config.toml" -Force
 
 
 if ($wasm -or $publicUrl -ne "" -or $wasmRayon) { # Check wasmRayon too
-    Write-Host "Building particle-simulation for web..."
+    Write-Host "Building particle-simulation-3d for web..."
 
     $originalRustFlags = $env:RUSTFLAGS
     $env:RUSTFLAGS += " -C target-feature=-nontrapping-fptoint"
@@ -64,10 +64,10 @@ if ($wasm -or $publicUrl -ne "" -or $wasmRayon) { # Check wasmRayon too
 
 $nativeRustFlags = $env:RUSTFLAGS
 if ($native) {
-    Write-Host "Building particle-simulation for $TARGET with native CPU optimizations..."
+    Write-Host "Building particle-simulation-3d for $TARGET with native CPU optimizations..."
     $nativeRustFlags += " -C target-cpu=native"
 } else {
-    Write-Host "Building particle-simulation for $TARGET..."
+    Write-Host "Building particle-simulation-3d for $TARGET..."
 }
 
 

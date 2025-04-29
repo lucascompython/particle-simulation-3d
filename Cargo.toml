@@ -1,5 +1,5 @@
 [package]
-name = "particle-simulation"
+name = "particle-simulation-3d"
 version = "0.1.0"
 authors = ["Lucas de Linhares <lucasdelinhares@gmail.com>"]
 edition = "2024"
