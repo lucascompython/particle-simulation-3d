@@ -3,7 +3,7 @@ This project uses `Winit`, `Wgpu` and `Egui`.
 
 Its heavily inspired by [this project](https://github.com/Im-Rises/particle-simulator-webgl).
 
-I'm making this project with the goal of learning graphics programming and the differences between graphics library stacks.
+I'm making this project with the goal of learning modern graphics programming and the differences between graphics library stacks.
 
 A 2D version of this simulation that uses `Zig` + `SDL3` + `Dawn/Wgpu-Native` + `ImGui` can be found [here](https://github.com/lucascompython/particle-simulation-2d).
 
