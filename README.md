@@ -47,3 +47,4 @@ The `#dev` is to skip the cache [assets/sw.js](/assets/sw.js) provides.
 - Add more color profiles
 - Improve binary size
 - Update to wgpu 25
+- Add mobile support, with touch controls
