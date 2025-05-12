@@ -39,7 +39,7 @@ And go to [http://127.0.0.1:8080/index.html#dev](http://127.0.0.1:8080/index.htm
 The `#dev` is to skip the cache [assets/sw.js](/assets/sw.js) provides.
 
 ## TODO:
-- Add Web support
+- Remove shell build scripts in favor of `build.rs`
 - Improve performance, especially startup time
 - Add more settings and values to tinker with in the simulation
 - ~~Add 2D version, basically rewrite [this](https://github.com/lucascompython/particles).~~ Decided to pursue this with a different stack and in a [separate repository](https://github.com/lucascompython/particle-simulation-2d).
