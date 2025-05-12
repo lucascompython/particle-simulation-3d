@@ -19,11 +19,12 @@ I wanted to add another GPU method, namely Transform Feedback since it is (I thi
 
 ## Build Locally
 
+For release builds this project uses a [xtask](https://github.com/matklad/cargo-xtask) like [build-script](/release), that has a cargo alias defined as `release`. See usage below:
+
+
 ### Build Release
 ```bash
-./build.sh
-# OR
-./build.ps1
+cargo release --help
 ```
 
 ### Native Development
@@ -39,8 +40,7 @@ And go to [http://127.0.0.1:8080/index.html#dev](http://127.0.0.1:8080/index.htm
 The `#dev` is to skip the cache [assets/sw.js](/assets/sw.js) provides.
 
 ## TODO:
-- Remove shell build scripts in favor of `build.rs`
-- Improve performance, especially startup time
+- Improve performance, especiall startup time
 - Add more settings and values to tinker with in the simulation
 - ~~Add 2D version, basically rewrite [this](https://github.com/lucascompython/particles).~~ Decided to pursue this with a different stack and in a [separate repository](https://github.com/lucascompython/particle-simulation-2d).
 - Make CI work nicely
