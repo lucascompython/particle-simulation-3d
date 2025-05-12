@@ -200,9 +200,8 @@ fn build_wasm(
     base_rustflags: &str,
 ) -> Result<(), Box<dyn Error>> {
     println!("Building particle-simulation-3d for web...");
-
     let mut wasm_rustflags = format!("{} -C target-feature=-nontrapping-fptoint", base_rustflags);
-    let mut trunk_args = Vec::<&str>::new();
+    let mut trunk_args = vec!["build", "--release"];
 
     if args.wasm_rayon {
         println!("Enabling wasm-rayon feature and atomics...");
@@ -225,9 +224,6 @@ fn build_wasm(
     } else {
         PathBuf::from("trunk")
     };
-
-    trunk_args.push("build");
-    trunk_args.push("--release");
 
     let public_url_holder;
     if let Some(public_url) = &args.public_url {
