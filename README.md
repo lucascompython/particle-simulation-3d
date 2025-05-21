@@ -9,6 +9,10 @@ A 2D version of this simulation that uses [`Zig`](https://ziglang.org/) + [`SDL3
 
 This project initially used this [template](https://github.com/kaphula/winit-egui-wgpu-template) but I migrated to [eframe](https://github.com/emilk/egui/tree/master/crates/eframe) using the [eframe template](https://github.com/emilk/eframe_template).
 
+## Demo
+
+https://github.com/user-attachments/assets/09953c8d-fa46-4dcb-85f1-edc221c29472
+
 
 ## Simulation Methods
 The simulation can run on different methods, such as:
