@@ -117,7 +117,7 @@ trim-paths = true
 
     let _config_guard = ConfigGuard::new(config_path);
 
-    let base_rustflags = "-Csymbol-mangling-version=v0 -Zlocation-detail=none -Zfmt-debug=none";
+    let base_rustflags = "-Csymbol-mangling-version=v0 -Zlocation-detail=none ";
 
     let mut success = true;
 
@@ -248,7 +248,7 @@ fn build_native(
     base_rustflags: &str,
 ) -> Result<(), Box<dyn Error>> {
     let mut native_rustflags = format!(
-        "{} -Clink-args=-fuse-ld=lld -Clink-args=-Wl,--icf=all",
+        "{} -Zfmt-debug=none -Clink-args=-fuse-ld=lld -Clink-args=-Wl,--icf=all",
         base_rustflags
     );
 
