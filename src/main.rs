@@ -52,10 +52,11 @@ fn main() -> eframe::Result {
                         required_features: wgpu::Features::empty(),
                         required_limits: limits,
                         memory_hints: wgpu::MemoryHints::default(),
+                        trace: wgpu::Trace::Off,
+                        experimental_features: wgpu::ExperimentalFeatures::disabled(),
                     }
                 }),
-
-                trace_path: None,
+                // trace_path: None,
             }),
 
             on_surface_error: Arc::new(|error| {
