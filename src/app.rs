@@ -333,14 +333,14 @@ impl ParticleApp {
                 ui.heading("Simulation");
 
                 ui.horizontal(|ui| {
-                    if ui.button("Reset").clicked() {
-                        if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                            self.simulation.reset(
-                                &wgpu_render_state.device,
-                                &wgpu_render_state.queue,
-                                self.generation_mode,
-                            );
-                        }
+                    if ui.button("Reset").clicked()
+                        && let Some(wgpu_render_state) = frame.wgpu_render_state()
+                    {
+                        self.simulation.reset(
+                            &wgpu_render_state.device,
+                            &wgpu_render_state.queue,
+                            self.generation_mode,
+                        );
                     }
 
                     let paused = self.simulation.is_paused();
@@ -361,18 +361,17 @@ impl ParticleApp {
                             if ui
                                 .selectable_label(self.current_method == *method, text)
                                 .clicked()
+                                && self.current_method != *method
                             {
-                                if self.current_method != *method {
-                                    clicked_method = Some(*method);
-                                }
+                                clicked_method = Some(*method);
                             }
                         }
                     });
 
-                if let Some(method) = clicked_method {
-                    if let Some(wgpu_render_state) = frame.wgpu_render_state() {
-                        self.change_simulation_method(method, &wgpu_render_state.device);
-                    }
+                if let Some(method) = clicked_method
+                    && let Some(wgpu_render_state) = frame.wgpu_render_state()
+                {
+                    self.change_simulation_method(method, &wgpu_render_state.device);
                 }
 
                 ui.separator();

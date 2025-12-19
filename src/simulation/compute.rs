@@ -128,10 +128,8 @@ impl ParticleSimulation for ComputeParticleSimulation {
         encoder: &mut wgpu::CommandEncoder,
         params: &SimParams,
     ) {
-        // Update simulation parameters
         queue.write_buffer(&self.sim_param_buffer, 0, bytemuck::cast_slice(&[*params]));
 
-        // Create compute pass to update particles
         let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("Particle Compute Pass"),
             timestamp_writes: None,
@@ -140,11 +138,9 @@ impl ParticleSimulation for ComputeParticleSimulation {
         compute_pass.set_pipeline(&self.compute_pipeline);
         compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
 
-        // Dispatch one workgroup per 128 particles (similar to original code)
-        let workgroup_count = (self.particle_count + 255) / 256;
+        // dispatch one workgroup per 128 particles
+        let workgroup_count = self.particle_count.div_ceil(256);
         compute_pass.dispatch_workgroups(workgroup_count, 1, 1);
-
-        // Compute pass is dropped here and command buffer finalized
     }
 
     fn resize_buffer(
