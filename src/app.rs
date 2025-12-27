@@ -79,7 +79,7 @@ impl ParticleApp {
         let device = &wgpu_render_state.device;
 
         // Initialize camera
-        let size = cc.egui_ctx.screen_rect().size();
+        let size = cc.egui_ctx.content_rect().size();
         let aspect_ratio = size.x / size.y;
         let camera = Camera::new(device, aspect_ratio);
 
@@ -243,7 +243,7 @@ impl ParticleApp {
 
             // Handle mouse position for particle interaction
             if self.mouse_dragging {
-                let screen_rect = ctx.screen_rect();
+                let screen_rect = ctx.content_rect();
                 let (x, y) = self.mouse_pos;
 
                 // Convert screen coordinates to normalized device coordinates

@@ -5,6 +5,7 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process;
 use std::process::{Command, Stdio};
 
 #[derive(Debug)]
@@ -103,7 +104,7 @@ release = "run --manifest-path ./release/Cargo.toml --"
 
 [unstable]
 build-std = ["std", "panic_abort"]
-build-std-features = ["panic_immediate_abort"]
+build-std-features = [""]
 trim-paths = true
 "#;
 
@@ -131,14 +132,12 @@ trim-paths = true
         }
     }
 
-    if success {
-        if let Some(target) = args.target.as_ref() {
-            match build_native(&args, target, &project_root, base_rustflags) {
-                Ok(_) => (),
-                Err(e) => {
-                    eprintln!("Native build failed: {}", e);
-                    success = false;
-                }
+    if success && let Some(target) = args.target.as_ref() {
+        match build_native(&args, target, &project_root, base_rustflags) {
+            Ok(_) => (),
+            Err(e) => {
+                eprintln!("Native build failed: {}", e);
+                success = false;
             }
         }
     }
@@ -196,16 +195,39 @@ fn run_command(
 
 fn build_wasm(
     args: &Args,
-    project_root: &PathBuf,
+    project_root: &Path,
     base_rustflags: &str,
 ) -> Result<(), Box<dyn Error>> {
     println!("Building particle-simulation-3d for web...");
-    let mut wasm_rustflags = format!("{} -C target-feature=-nontrapping-fptoint", base_rustflags);
+    let mut wasm_rustflags = format!(
+        "{} -C target-feature=-nontrapping-fptoint -Zunstable-options -Cpanic=immediate-abort",
+        base_rustflags
+    );
     let mut trunk_args = vec!["build", "--release"];
 
     if args.wasm_rayon {
         println!("Enabling wasm-rayon feature and atomics...");
-        wasm_rustflags.push_str(",+atomics");
+
+        // https://github.com/RReverser/wasm-bindgen-rayon#using-config-files
+        wasm_rustflags.extend([
+            "-C",
+            "target-feature=+atomics,+bulk-memory",
+            "-C",
+            "link-arg=--shared-memory",
+            "-C",
+            "link-arg=--max-memory=1073741824",
+            "-C",
+            "link-arg=--import-memory",
+            "-C",
+            "link-arg=--export=__wasm_init_tls",
+            "-C",
+            "link-arg=--export=__tls_size",
+            "-C",
+            "link-arg=--export=__tls_align",
+            "-C",
+            "link-arg=--export=__tls_base",
+        ]);
+
         trunk_args.push("--features");
         trunk_args.push("wasm-rayon");
     }
@@ -244,7 +266,7 @@ fn build_wasm(
 fn build_native(
     args: &Args,
     target: &str,
-    project_root: &PathBuf,
+    project_root: &Path,
     base_rustflags: &str,
 ) -> Result<(), Box<dyn Error>> {
     let mut native_rustflags = format!(

@@ -1,7 +1,7 @@
 [build]
 filehash = false
-# minify = "on_release"
+minify = "on_release"
 
 [tools]
-wasm_opt = "version_123"
-wasm_bindgen = "0.2.100"
+wasm_opt = "version_125"
+wasm_bindgen = "0.2.106"

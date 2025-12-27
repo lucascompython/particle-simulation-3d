@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Lucas de Linhares <lucasdelinhares@gmail.com>"]
 edition = "2024"
 
+[workspace]
+members = ["release"]
+
 [dependencies]
 egui = { version = "0.33.3", default-features = false, features = ["rayon"] }
 eframe = { version = "0.33.3", default-features = false, features = [
@@ -19,10 +22,11 @@ bytemuck = "1.24"
 rand = { version = "0.9", default-features = false, features = ["small_rng"] }
 rayon = "1.11"
 
+
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = { version = "0.11", optional = true }
-mimalloc = { version = "0.1" }
+mimalloc = { version = "0.1", features = ["v3"] }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
