@@ -5,7 +5,6 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process;
 use std::process::{Command, Stdio};
 
 #[derive(Debug)]
@@ -210,21 +209,21 @@ fn build_wasm(
 
         // https://github.com/RReverser/wasm-bindgen-rayon#using-config-files
         wasm_rustflags.extend([
-            "-C",
+            " -C",
             "target-feature=+atomics,+bulk-memory",
-            "-C",
+            " -C",
             "link-arg=--shared-memory",
-            "-C",
+            " -C",
             "link-arg=--max-memory=1073741824",
-            "-C",
+            " -C",
             "link-arg=--import-memory",
-            "-C",
+            " -C",
             "link-arg=--export=__wasm_init_tls",
-            "-C",
+            " -C",
             "link-arg=--export=__tls_size",
-            "-C",
+            " -C",
             "link-arg=--export=__tls_align",
-            "-C",
+            " -C",
             "link-arg=--export=__tls_base",
         ]);
 
