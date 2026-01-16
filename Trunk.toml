@@ -4,4 +4,4 @@ minify = "on_release"
 
 [tools]
 wasm_opt = "version_125"
-wasm_bindgen = "0.2.106"
+wasm_bindgen = "0.2.108"
